@@ -1,9 +1,13 @@
 """Transforming MovieLens dataset for recommendation"""
 
-DATA_DIR = "data/ml-latest-small"
+DATA_DIR = "data/"
+MOVIELENS_DIR = "ml-latest-small/"
+OUT_DIR = "out/"
 
 import pandas as pd 
 import pathlib as path 
+
+from .prepare import ensure_dir 
 
 def save_mapping(mapping: dict, filename: str) -> None:
     """Save a mapping dictionary to a CSV file."""
@@ -44,17 +48,18 @@ def transform_ratings(data_dir: str, filename: str, rating_threshold: int=50) ->
 
     return ratings_df, user_mapping, item_mapping 
 
-def transform(): 
-    ratings = transform_ratings(DATA_DIR, 'ratings.csv')
+def transform() -> dict:
+    ratings = transform_ratings(path.Path(DATA_DIR) / MOVIELENS_DIR, 'ratings.csv')
 
     return {"ratings": ratings}
 
 def main(): 
     transformed_data = transform()
+    ensure_dir(path.Path("./"), OUT_DIR)
     ratings_df, user_mapping, item_mapping = transformed_data["ratings"]
-    ratings_df.to_csv("transformed_ratings.csv", index=False)
-    save_mapping(user_mapping, "user_mapping.csv")
-    save_mapping(item_mapping, "item_mapping.csv")
+    ratings_df.to_csv(path.Path(OUT_DIR)/"transformed_ratings.csv", index=False)
+    save_mapping(user_mapping, path.Path(OUT_DIR)/"user_mapping.csv")
+    save_mapping(item_mapping, path.Path(OUT_DIR)/"item_mapping.csv")
 
 
 if __name__ == "__main__":
