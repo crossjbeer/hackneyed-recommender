@@ -4,7 +4,7 @@ import pandas as pd
 import scipy.sparse as sp
 import pathlib as path 
 
-from transform import transform_ratings, DATA_DIR
+from transform import transform_ratings, DATA_DIR, OUT_DIR, ensure_dir
 
 def build_urm(ratings_df: pd.DataFrame) -> sp.csr_matrix:
     """Build a sparse user-item interaction matrix (URM) from the ratings DataFrame."""
@@ -23,7 +23,8 @@ def build_urm(ratings_df: pd.DataFrame) -> sp.csr_matrix:
 def main():
     ratings_df, _, _ = transform_ratings(DATA_DIR, 'ratings.csv')
     urm = build_urm(ratings_df)
-    sp.save_npz("user_item_matrix.npz", urm)
+    ensure_dir(path.Path("./"), OUT_DIR)
+    sp.save_npz(path.Path(OUT_DIR)/"user_item_matrix.npz", urm)
     print("URM saved to user_item_matrix.npz")
 
 if __name__ == "__main__":
