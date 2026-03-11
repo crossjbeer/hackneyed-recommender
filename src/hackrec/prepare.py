@@ -13,10 +13,15 @@ def project_root() -> Path:
 	return Path(__file__).resolve().parents[2]
 
 
+def ensure_dir(root: Path, subdir: str) -> Path:
+	"""Create and return a subdirectory under the project root."""
+	dir_path = root / subdir
+	dir_path.mkdir(parents=True, exist_ok=True)
+	return dir_path
+
 def ensure_data_dir(root: Path) -> Path:
 	"""Create and return the project's data directory."""
-	data_dir = root / "data"
-	data_dir.mkdir(parents=True, exist_ok=True)
+	data_dir = ensure_dir(root, "data")
 	return data_dir
 
 
