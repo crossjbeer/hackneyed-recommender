@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hackrec"
+version = "0.1.0"
+description = "A basic recommender system project"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pandas", "scipy"]
+
