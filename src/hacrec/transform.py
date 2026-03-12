@@ -45,14 +45,14 @@ def transform_ratings(data_dir: str, filename: str, rating_threshold: int=10) ->
     return ratings_df, user_mapping, item_mapping 
 
 def split_ratings(ratings_df: pd.DataFrame) -> tuple:
-    """Split ratings into train, test, and validation sets using per-user temporal order.
+    """Split ratings into train, validation, and test sets using per-user temporal order.
 
     For each user:
       - validation: their most recent rating
       - test:       their second-most-recent rating
       - train:      all remaining ratings
 
-    Returns (train_df, test_df, val_df).
+    Returns (train_df, val_df, test_df).
     """
     ratings_df = ratings_df.sort_values(['userId', 'timestamp'])
 
@@ -114,7 +114,7 @@ def main():
     num_users = int(ratings_df['userId'].max()) + 1
     num_items = int(ratings_df['movieId'].max()) + 1
 
-    train_df, test_df, val_df = split_ratings(ratings_df)
+    train_df, val_df, test_df = split_ratings(ratings_df)
 
     out = ensure_dir(path.Path("./"), OUT_DIR)
     urm = build_urm(train_df, shape=(num_users, num_items))
