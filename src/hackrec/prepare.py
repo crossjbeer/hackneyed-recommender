@@ -7,7 +7,6 @@ from zipfile import ZipFile
 
 MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
 
-
 def project_root() -> Path:
 	"""Return the project root from this source file location."""
 	return Path(__file__).resolve().parents[2]
