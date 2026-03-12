@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hackrec"
+name = "hacrec"
 version = "0.1.0"
 description = "A basic recommender system project"
 readme = "README.md"
@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 dependencies = ["numpy", "pandas", "scipy"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/hackrec"]
+packages = ["src/hacrec"]
 
 [project.scripts]
-hackreceval = "hackrec.eval:main"
+hacreceval = "hacrec.eval:main"

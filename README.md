@@ -1,8 +1,8 @@
 # Hackneyed Recommender
 
-A simple recommender system for the MovieLens Dataset.
-Implementing Collaborative Filtering and Matrix Factorization. 
-Demonstrating comparative performance and various use cases. 
+A simple, __hackneyed__ recommender system for the MovieLens Dataset.
+Using Collaborative Filtering and Matrix Factorization. 
+Demonstrating comparative recommender performance and various use cases. 
 An exploratory project. 
 
 ## How it works
@@ -25,15 +25,15 @@ This project uses [UV](https://docs.astral.sh/uv/) for dependency management.
 # Clone and sync
 git clone <repo-url>
 cd basic-recommender
-uv sync
+uv sync # Creates .venv automatically 
 ```
 
 ## Usage
 
 ```bash
 # Run the evaluation script
-uv run hackreceval
+uv run hacreceval
 
 # Run any python script
-uv run python src/hackrec/prepare.py
+uv run python src/hacrec/prepare.py
 ```
