@@ -1,4 +1,4 @@
-"""Collaborative filtering using item-based cosine similarity for rating prediction."""
+"""Item-item Cosine Collaborative Filtering."""
 
 from abc import ABC, abstractmethod
 
@@ -55,7 +55,7 @@ class ItemBasedCF(Recommender):
         urm_normed = urm @ sp.diags(1.0 / norms)
 
         self.similarity = (urm_normed.T @ urm_normed).tocsr()
-        print(f"Computed item-item similarity matrix: {self.similarity.shape}")
+        # print(f"Computed item-item similarity matrix: {self.similarity.shape}")
 
     def predict(self, user_id: int, item_id: int) -> float:
         user_row = self.urm[user_id]
