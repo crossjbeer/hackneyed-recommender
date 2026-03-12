@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "hackrec"
@@ -8,5 +8,10 @@ version = "0.1.0"
 description = "A basic recommender system project"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["pandas", "scipy"]
+dependencies = ["numpy", "pandas", "scipy"]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/hackrec"]
+
+[project.scripts]
+hackreceval = "hackrec.eval:main"
