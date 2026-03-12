@@ -1,5 +1,6 @@
-"""Matrix factorization (ALS) for rating prediction."""
+"""Alternating Least Squares (ALS) Matrix factorization."""
 
+import json
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -33,6 +34,7 @@ class ALSFactorization(Recommender):
         self.item_factors = rng.normal(0, 0.01, (n_items, self.n_factors))
 
         urm_csc = urm.tocsc()
+        self.loss_history: list[float] = []
 
         for iteration in range(self.n_iterations):
             # Fix items, solve for users
@@ -42,6 +44,7 @@ class ALSFactorization(Recommender):
 
             # Training loss (evaluated on nonzero entries only)
             loss = self._compute_loss(urm)
+            self.loss_history.append(loss)
             # print(f"  Iteration {iteration + 1}/{self.n_iterations}  loss={loss:.4f}")
 
         # print(f"ALS fit complete — factors={self.n_factors}, shape U={self.user_factors.shape}, V={self.item_factors.shape}")
@@ -106,8 +109,14 @@ def main():
 
     print(f"URM shape: {urm.shape}")
 
-    model = ALSFactorization(n_factors=65, n_iterations=40, lambda_=0.1)
+    model = ALSFactorization(n_factors=20, n_iterations=40, lambda_=0.1)
     model.fit(urm)
+
+    # Persist loss history
+    loss_path = out / "als_loss_history.json"
+    with open(loss_path, "w") as f:
+        json.dump(model.loss_history, f)
+    print(f"Saved ALS loss history to {loss_path}")
 
     print(f"\nValidation set ({len(val_df)} pairs):")
     val_metrics = evaluate_predictions(model, val_df)
