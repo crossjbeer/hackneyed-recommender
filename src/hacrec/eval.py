@@ -1,11 +1,19 @@
 """Unified evaluation endpoint for all recommender strategies."""
 
+import json
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
 
 from .collaborativefiltering import ItemBasedCF, Recommender, evaluate_predictions, evaluate_recommendations
+from .baselines import (
+    GlobalMeanBaseline,
+    UserMeanBaseline,
+    ItemMeanBaseline,
+    UserItemBiasBaseline,
+    MostPopularBaseline,
+)
 from .factorization import ALSFactorization
 from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR, load_mapping 
 
@@ -17,11 +25,21 @@ from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR, load_mapping
 STRATEGY_REGISTRY: dict[str, type[Recommender]] = {
     "item-cf": ItemBasedCF,
     "als": ALSFactorization,
+    "global-mean": GlobalMeanBaseline,
+    "user-mean": UserMeanBaseline,
+    "item-mean": ItemMeanBaseline,
+    "user-item-bias": UserItemBiasBaseline,
+    "most-popular": MostPopularBaseline,
 }
 
 DEFAULT_PARAMS: dict[str, dict] = {
     "item-cf": {"k": 50},
     "als": {"n_factors": 65, "n_iterations": 40, "lambda_": 0.1},
+    "global-mean": {},
+    "user-mean": {},
+    "item-mean": {},
+    "user-item-bias": {"reg": 10.0, "n_iterations": 10},
+    "most-popular": {},
 }
 
 
@@ -87,8 +105,6 @@ def run_evaluation(
     user_mapping_reverse = {v: k for k, v in user_mapping.items()}
     item_mapping_reverse = {v: k for k, v in item_mapping.items()}
 
-    print(f"URM shape: {urm.shape}")
-
     if strategies is None:
         strategies = list(STRATEGY_REGISTRY.keys())
 
@@ -96,45 +112,73 @@ def run_evaluation(
 
     for name in strategies:
         print(f"\n{'=' * 60}")
-        print(f"Strategy: {name}")
+        print(f"Evaluating strategy: {name}")   
         print(f"{'=' * 60}")
-
+        
         model = build_model(name)
         model.fit(urm)
 
-        # --- validation metrics ---
-        print(f"\nValidation set ({len(val_df)} pairs):")
         val_metrics = evaluate_predictions(model, val_df)
-        print(f"  RMSE : {val_metrics['rmse']:.4f}")
-        print(f"  MAE  : {val_metrics['mae']:.4f}")
-
-        # --- test metrics ---
-        # print(f"\nTest set ({len(test_df)} pairs):")
-        # test_metrics = evaluate_predictions(model, test_df)
-        # print(f"  RMSE : {test_metrics['rmse']:.4f}")
-        # print(f"  MAE  : {test_metrics['mae']:.4f}")
-
-        # --- ranking metrics ---
-        print(f"\nRanking metrics (top-{n_recs}):")
         rank_metrics = evaluate_recommendations(model, val_df, k=n_recs)
-        print(f"  Precision@{n_recs} : {rank_metrics['precision_at_k']:.4f}")
-        print(f"  Recall@{n_recs}    : {rank_metrics['recall_at_k']:.4f}")
-        print(f"  NDCG@{n_recs}      : {rank_metrics['ndcg_at_k']:.4f}")
-        print(f"  Users evaluated: {rank_metrics['num_users_evaluated']}")
-
-        # --- sampled recommendations ---
-        print(f"\nSample recommendations ({n_sample_users} users, top-{n_recs}):")
         recs = sample_recommendations(model, urm, n_users=n_sample_users, n_recs=n_recs)
-        for uid, items in recs.items():
-            top_items = ", ".join(f"{title_mapping[item_mapping_reverse[iid]]} ({score:.3f})" for iid, score in items)
-            print(f"  User {user_mapping_reverse[uid]}: {top_items}")
 
         all_results[name] = {
             "val": val_metrics,
-            # "test": test_metrics,
             "rank": rank_metrics,
-            "sample_recs": recs,
+            "sample_recs": {str(k): [(iid, sc) for iid, sc in v] for k, v in recs.items()},
         }
+
+        # Persist ALS loss history when applicable
+        if isinstance(model, ALSFactorization) and hasattr(model, "loss_history"):
+            loss_path = out / "als_loss_history.json"
+            with open(loss_path, "w") as f:
+                json.dump(model.loss_history, f)
+
+    # ---- persist results as CSV for the visualisation endpoint ----
+
+    # 1. Prediction metrics (RMSE / MAE) — one row per strategy
+    pred_rows = []
+    for name, data in all_results.items():
+        pred_rows.append({
+            "strategy": name,
+            "rmse": data["val"]["rmse"],
+            "mae": data["val"]["mae"],
+            "num_predictions": data["val"]["num_predictions"],
+        })
+    pred_df = pd.DataFrame(pred_rows)
+    pred_df.to_csv(out / "eval_prediction_metrics.csv", index=False)
+
+    # 2. Ranking metrics — one row per strategy
+    rank_rows = []
+    for name, data in all_results.items():
+        rank_rows.append({
+            "strategy": name,
+            "precision_at_k": data["rank"]["precision_at_k"],
+            "recall_at_k": data["rank"]["recall_at_k"],
+            "ndcg_at_k": data["rank"]["ndcg_at_k"],
+            "k": data["rank"]["k"],
+            "num_users_evaluated": data["rank"]["num_users_evaluated"],
+        })
+    rank_df = pd.DataFrame(rank_rows)
+    rank_df.to_csv(out / "eval_ranking_metrics.csv", index=False)
+
+    # 3. Top-K recommendations with movie titles — one row per (strategy, user, rank)
+    rec_rows = []
+    for name, data in all_results.items():
+        for uid_str, items in data["sample_recs"].items():
+            for rank, (iid, score) in enumerate(items, start=1):
+                original_iid = item_mapping_reverse.get(iid, iid)
+                title = title_mapping.get(original_iid, f"item-{iid}")
+                rec_rows.append({
+                    "strategy": name,
+                    "user_id": uid_str,
+                    "rank": rank,
+                    "item_id": iid,
+                    "title": title,
+                    "score": float(score),
+                })
+    rec_df = pd.DataFrame(rec_rows)
+    rec_df.to_csv(out / "eval_recommendations.csv", index=False)
 
     return all_results
 
@@ -143,8 +187,28 @@ def run_evaluation(
 # CLI entry point
 # ------------------------------------------------------------------
 
+def _print_results(all_results: dict[str, dict]) -> None:
+    """Pretty-print evaluation results to stdout."""
+    for name, data in all_results.items():
+        print(f"\n{'=' * 60}")
+        print(f"Strategy: {name}")
+        print(f"{'=' * 60}")
+
+        val = data["val"]
+        print(f"\n  RMSE : {val['rmse']:.4f}")
+        print(f"  MAE  : {val['mae']:.4f}")
+
+        rank = data["rank"]
+        k = rank["k"]
+        print(f"\n  Precision@{k} : {rank['precision_at_k']:.4f}")
+        print(f"  Recall@{k}    : {rank['recall_at_k']:.4f}")
+        print(f"  NDCG@{k}      : {rank['ndcg_at_k']:.4f}")
+        print(f"  Users evaluated: {rank['num_users_evaluated']}")
+
+
 def main():
-    run_evaluation()
+    results = run_evaluation()
+    _print_results(results)
 
 
 if __name__ == "__main__":
