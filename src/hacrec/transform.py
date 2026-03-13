@@ -7,17 +7,7 @@ OUT_DIR = "out/"
 import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
-from .util import ensure_dir
-
-def save_mapping(mapping: dict, filename: str) -> None:
-    """Save a mapping dictionary to a CSV file."""
-    mapping_df = pd.DataFrame(list(mapping.items()), columns=['original_id', 'mapped_id'])
-    mapping_df.to_csv(filename, index=False)
-
-def load_mapping(filename: str) -> dict:
-    """Load a mapping dictionary from a CSV file."""
-    mapping_df = pd.read_csv(filename)
-    return dict(zip(mapping_df['original_id'], mapping_df['mapped_id']))
+from .util import ensure_dir, save_mapping
 
 ###
 # Ratings
@@ -89,7 +79,6 @@ def build_urm(ratings_df: pd.DataFrame, shape: tuple) -> sp.csr_matrix:
 
     print("URM construction complete.")
     return urm
-
 
 ### 
 # Movies
