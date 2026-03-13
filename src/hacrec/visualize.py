@@ -18,15 +18,23 @@ def _load_json(filepath: path.Path) -> dict | list:
 # ------------------------------------------------------------------
 # 1. RMSE / MAE bar chart
 # ------------------------------------------------------------------
-
-
 def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path) -> None:
     """Grouped bar chart comparing RMSE and MAE across strategies."""
+    pred_df = pred_df.sort_values("rmse")
+    min_rmse = pred_df["rmse"].min()
     fig = go.Figure(
         data=[
             go.Bar(name="RMSE", x=pred_df["strategy"], y=pred_df["rmse"]),
             go.Bar(name="MAE", x=pred_df["strategy"], y=pred_df["mae"]),
         ]
+    )
+    fig.add_hline(
+        y=min_rmse,
+        line_dash="dot",
+        line_color="rgba(255,255,255,0.5)",
+        line_width=1.5,
+        annotation_text=f"min RMSE = {min_rmse:.4f}",
+        annotation_position="top right",
     )
     fig.update_layout(
         barmode="group",
