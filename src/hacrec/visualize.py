@@ -32,7 +32,7 @@ def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path) -> None:
         y=min_rmse,
         line_dash="dot",
         line_color="rgba(255,255,255,0.5)",
-        line_width=1.5,
+        line_width=3.5,
         annotation_text=f"min RMSE = {min_rmse:.4f}",
         annotation_position="top right",
     )
