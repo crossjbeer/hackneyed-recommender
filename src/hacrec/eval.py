@@ -1,27 +1,65 @@
 """Unified evaluation endpoint for all recommender strategies."""
 
 import json
+import sys
+import threading
+import time
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
 
-from .collaborativefiltering import ItemBasedCF
-from .biasedcollaborativefiltering import BiasedCollaborativeCF
+from .itembasedcf import ItemBasedCF
+from .biaseditembasedcf import BiasedCollaborativeCF
 from .recommender import evaluate_predictions, evaluate_recommendations, Recommender
 from .baselines import (
     GlobalMeanBaseline,
     UserMeanBaseline,
     ItemMeanBaseline,
     UserItemBiasBaseline,
-    MostPopularBaseline
+    MostPopularBaseline,
+    RandomRecommender,
 )
-from .factorization import ALSFactorization
-from .biasedfactorization import BiasedALSFactorization
-from .bprfactorizer import BPRFactorizer
-from .adjustedbprfactorizer import AdjustedBPRFactorizer
+from .alsfactorization import ALSFactorization
+from .biasedalsfactorization import BiasedALSFactorization
+from .bprfactorization import BPRFactorization
+from .implicitalsfactorization import ImplicitALSFactorizer
 from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR
 from .util import load_mapping
+
+
+# ------------------------------------------------------------------
+# Console spinner
+# ------------------------------------------------------------------
+
+class _Spinner:
+    """Lightweight console spinner that writes to stderr."""
+
+    _FRAMES = ("|", "/", "-", "\\")
+
+    def __init__(self, message: str) -> None:
+        self._message = message
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._spin, daemon=True)
+        self._t_start: float = 0.0
+
+    def _spin(self) -> None:
+        i = 0
+        while not self._stop.is_set():
+            frame = self._FRAMES[i % len(self._FRAMES)]
+            elapsed = time.perf_counter() - self._t_start
+            print(f"\r  [{frame}] {self._message} ({elapsed:.1f}s)", end="", flush=True, file=sys.stderr)
+            i += 1
+            self._stop.wait(0.1)
+
+    def start(self) -> None:
+        self._t_start = time.perf_counter()
+        self._thread.start()
+
+    def stop(self, elapsed: float) -> None:
+        self._stop.set()
+        self._thread.join()
+        print(f"\r  [done] {self._message} — {elapsed:.2f}s", file=sys.stderr)
 
 
 # ------------------------------------------------------------------
@@ -36,10 +74,11 @@ STRATEGY_REGISTRY: dict[str, type[Recommender]] = {
     "item-mean": ItemMeanBaseline,
     "user-item-bias": UserItemBiasBaseline,
     "most-popular": MostPopularBaseline,
+    "random": RandomRecommender,
     "biased-als": BiasedALSFactorization,
     "biased-cf": BiasedCollaborativeCF,
-    "bpr": BPRFactorizer,
-    "adjusted-bpr": AdjustedBPRFactorizer,
+    "bpr": BPRFactorization,
+    "ials": ImplicitALSFactorizer,
 }
 
 DEFAULT_PARAMS: dict[str, dict] = {
@@ -50,10 +89,11 @@ DEFAULT_PARAMS: dict[str, dict] = {
     "item-mean": {},
     "user-item-bias": {"reg": 10.0, "n_iterations": 10},
     "most-popular": {},
+    "random": {"seed": 42},
     "biased-als": {"n_factors": 20, "n_iterations": 40, "lambda_": 0.1},
     "biased-cf": {"k": 50, "reg": 10.0},
     "bpr": {"n_factors": 50, "n_epochs": 20, "lr": 0.05, "lambda_": 0.01},
-    "adjusted-bpr": {"n_factors": 50, "n_epochs": 20, "lr": 0.05, "lambda_": 0.01, "alpha": 0.5, "pop_neg_sampling": True},
+    "ials": {"n_factors": 50, "n_iterations": 15, "lambda_": 0.1, "alpha": 40.0},
 }
 
 
@@ -129,12 +169,18 @@ def run_evaluation(
         print(f"Evaluating strategy: {name}")   
         print(f"{'=' * 60}")
 
-        model = build_model(name)
-        model.fit(urm)
+        spinner = _Spinner(f"{name}")
+        t_start = time.perf_counter()
+        spinner.start()
+        try:
+            model = build_model(name)
+            model.fit(urm)
 
-        val_metrics = evaluate_predictions(model, val_df)
-        rank_metrics = evaluate_recommendations(model, val_df, k=n_recs)
-        recs = sample_recommendations(model, urm, n_users=n_sample_users, n_recs=n_recs)
+            val_metrics = evaluate_predictions(model, val_df)
+            rank_metrics = evaluate_recommendations(model, val_df, k=n_recs)
+            recs = sample_recommendations(model, urm, n_users=n_sample_users, n_recs=n_recs)
+        finally:
+            spinner.stop(time.perf_counter() - t_start)
 
         all_results[name] = {
             "val": val_metrics,
