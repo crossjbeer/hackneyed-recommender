@@ -2,3 +2,4 @@
 /out/
 */*.egg-info/
 /.venv/
+/.vscode/
