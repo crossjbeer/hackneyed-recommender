@@ -1,6 +1,6 @@
 """Adjusted Bayesian Personalized Ranking (BPR) Matrix Factorization.
 
-Extends BPRFactorizer with two complementary mechanisms to reduce
+Extends BPRFactorization with two complementary mechanisms to reduce
 popularity bias and promote diversity in rankings:
 
 1. **Popularity-biased negative sampling** (training time):
@@ -33,7 +33,7 @@ def _sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-np.clip(x, -30, 30)))
 
 
-class AdjustedBPRFactorizer(Recommender):
+class AdjustedBPRFactorization(Recommender):
     """Popularity-adjusted Bayesian Personalized Ranking matrix factorization.
 
     Adds two bias-reduction mechanisms on top of vanilla BPR:
@@ -65,7 +65,7 @@ class AdjustedBPRFactorizer(Recommender):
     pop_neg_sampling:
         If True (default), sample negatives proportional to item
         popularity during training.  If False, use uniform sampling
-        (identical training behaviour to BPRFactorizer).
+        (identical training behaviour to BPRFactorization).
     """
 
     def __init__(
@@ -207,7 +207,7 @@ def main():
 
     print(f"URM shape: {urm.shape}")
 
-    model = AdjustedBPRFactorizer(
+    model = AdjustedBPRFactorization(
         n_factors=50, n_epochs=20, lr=0.05, lambda_=0.01,
         alpha=0.5, pop_neg_sampling=True,
     )

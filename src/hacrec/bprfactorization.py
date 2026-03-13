@@ -25,7 +25,7 @@ def _sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-np.clip(x, -30, 30)))
 
 
-class BPRFactorizer(Recommender):
+class BPRFactorization(Recommender):
     """Bayesian Personalized Ranking matrix factorization.
 
     Factorises the user-item matrix R ≈ U @ V^T where U is (n_users, n_factors)
@@ -137,7 +137,7 @@ def main():
 
     print(f"URM shape: {urm.shape}")
 
-    model = BPRFactorizer(n_factors=50, n_epochs=20, lr=0.05, lambda_=0.01)
+    model = BPRFactorization(n_factors=50, n_epochs=20, lr=0.05, lambda_=0.01)
     model.fit(urm)
 
     # Persist loss history
