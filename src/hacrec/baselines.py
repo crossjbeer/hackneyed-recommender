@@ -99,6 +99,27 @@ class ItemMeanBaseline(Recommender):
         return [(i, float(self.item_means[i])) for i in top_idx]
 
 
+class RandomRecommender(Recommender):
+    """Sanity-check baseline: recommend uniformly random unrated items."""
+
+    def __init__(self, seed: int | None = None):
+        self.urm: sp.csr_matrix | None = None
+        self.rng = np.random.default_rng(seed)
+
+    def fit(self, urm: sp.csr_matrix) -> None:
+        self.urm = urm
+
+    def predict(self, user_id: int, item_id: int) -> float:
+        return float(self.rng.random())
+
+    def recommend(self, user_id: int, n: int = 10) -> list[tuple[int, float]]:
+        num_items = self.urm.shape[1]
+        rated_items = set(self.urm[user_id].indices) if user_id < self.urm.shape[0] else set()
+        candidates = [i for i in range(num_items) if i not in rated_items]
+        chosen = self.rng.choice(candidates, size=min(n, len(candidates)), replace=False)
+        return [(int(i), float(self.rng.random())) for i in chosen]
+
+
 class UserItemBiasBaseline(Recommender):
     """Bias-only baseline: global mean + user bias + item bias."""
 
