@@ -18,6 +18,8 @@ from .baselines import (
 )
 from .factorization import ALSFactorization
 from .biasedfactorization import BiasedALSFactorization
+from .bprfactorizer import BPRFactorizer
+from .adjustedbprfactorizer import AdjustedBPRFactorizer
 from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR
 from .util import load_mapping
 
@@ -36,6 +38,8 @@ STRATEGY_REGISTRY: dict[str, type[Recommender]] = {
     "most-popular": MostPopularBaseline,
     "biased-als": BiasedALSFactorization,
     "biased-cf": BiasedCollaborativeCF,
+    "bpr": BPRFactorizer,
+    "adjusted-bpr": AdjustedBPRFactorizer,
 }
 
 DEFAULT_PARAMS: dict[str, dict] = {
@@ -48,6 +52,8 @@ DEFAULT_PARAMS: dict[str, dict] = {
     "most-popular": {},
     "biased-als": {"n_factors": 20, "n_iterations": 40, "lambda_": 0.1},
     "biased-cf": {"k": 50, "reg": 10.0},
+    "bpr": {"n_factors": 50, "n_epochs": 20, "lr": 0.05, "lambda_": 0.01},
+    "adjusted-bpr": {"n_factors": 50, "n_epochs": 20, "lr": 0.05, "lambda_": 0.01, "alpha": 0.5, "pop_neg_sampling": True},
 }
 
 
