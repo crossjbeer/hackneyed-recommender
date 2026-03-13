@@ -7,16 +7,19 @@ import scipy.sparse as sp
 import pathlib as path
 
 from .collaborativefiltering import ItemBasedCF
+from .biasedcollaborativefiltering import BiasedCollaborativeCF
 from .recommender import evaluate_predictions, evaluate_recommendations, Recommender
 from .baselines import (
     GlobalMeanBaseline,
     UserMeanBaseline,
     ItemMeanBaseline,
     UserItemBiasBaseline,
-    MostPopularBaseline,
+    MostPopularBaseline
 )
 from .factorization import ALSFactorization
-from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR, load_mapping 
+from .biasedfactorization import BiasedALSFactorization
+from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR
+from .util import load_mapping
 
 
 # ------------------------------------------------------------------
@@ -31,6 +34,8 @@ STRATEGY_REGISTRY: dict[str, type[Recommender]] = {
     "item-mean": ItemMeanBaseline,
     "user-item-bias": UserItemBiasBaseline,
     "most-popular": MostPopularBaseline,
+    "biased-als": BiasedALSFactorization,
+    "biased-cf": BiasedCollaborativeCF,
 }
 
 DEFAULT_PARAMS: dict[str, dict] = {
@@ -41,6 +46,8 @@ DEFAULT_PARAMS: dict[str, dict] = {
     "item-mean": {},
     "user-item-bias": {"reg": 10.0, "n_iterations": 10},
     "most-popular": {},
+    "biased-als": {"n_factors": 20, "n_iterations": 40, "lambda_": 0.1},
+    "biased-cf": {"k": 50, "reg": 10.0},
 }
 
 
@@ -87,7 +94,7 @@ def sample_recommendations(
 def run_evaluation(
     strategies: list[str] | None = None,
     n_sample_users: int = 5,
-    n_recs: int = 5,
+    n_recs: int = 10,
 ) -> dict[str, dict]:
     """Train each strategy, evaluate on val/test sets, and sample recommendations.
 
@@ -197,14 +204,14 @@ def _print_results(all_results: dict[str, dict]) -> None:
         print(f"{'=' * 60}")
 
         val = data["val"]
-        print(f"\n  RMSE : {val['rmse']:.4f}")
-        print(f"  MAE  : {val['mae']:.4f}")
+        print(f"\n  RMSE : {val['rmse']:.6f}")
+        print(f"  MAE  : {val['mae']:.6f}")
 
         rank = data["rank"]
         k = rank["k"]
-        print(f"\n  Precision@{k} : {rank['precision_at_k']:.4f}")
-        print(f"  Recall@{k}    : {rank['recall_at_k']:.4f}")
-        print(f"  NDCG@{k}      : {rank['ndcg_at_k']:.4f}")
+        print(f"\n  Precision@{k} : {rank['precision_at_k']:.6f}")
+        print(f"  Recall@{k}    : {rank['recall_at_k']:.6f}")
+        print(f"  NDCG@{k}      : {rank['ndcg_at_k']:.6f}")
         print(f"  Users evaluated: {rank['num_users_evaluated']}")
 
 
