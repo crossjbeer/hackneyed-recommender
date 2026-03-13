@@ -23,6 +23,7 @@ from .baselines import (
 from .alsfactorization import ALSFactorization
 from .biasedalsfactorization import BiasedALSFactorization
 from .bprfactorization import BPRFactorization
+from .adjustedbprfactorization import AdjustedBPRFactorization
 from .implicitalsfactorization import ImplicitALSFactorizer
 from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR
 from .util import load_mapping
@@ -67,7 +68,7 @@ class _Spinner:
 # ------------------------------------------------------------------
 
 STRATEGY_REGISTRY: dict[str, type[Recommender]] = {
-    "item-cf": ItemBasedCF,
+    "item-based-cf": ItemBasedCF,
     "als": ALSFactorization,
     "global-mean": GlobalMeanBaseline,
     "user-mean": UserMeanBaseline,
@@ -76,13 +77,14 @@ STRATEGY_REGISTRY: dict[str, type[Recommender]] = {
     "most-popular": MostPopularBaseline,
     "random": RandomRecommender,
     "biased-als": BiasedALSFactorization,
-    "biased-cf": BiasedCollaborativeCF,
+    "biased-item-cf": BiasedCollaborativeCF,
     "bpr": BPRFactorization,
-    "ials": ImplicitALSFactorizer,
+    "adjusted-bpr": AdjustedBPRFactorization,
+    "implicit-als": ImplicitALSFactorizer,
 }
 
 DEFAULT_PARAMS: dict[str, dict] = {
-    "item-cf": {"k": 50},
+    "item-based-cf": {"k": 50},
     "als": {"n_factors": 65, "n_iterations": 40, "lambda_": 0.1},
     "global-mean": {},
     "user-mean": {},
@@ -91,9 +93,10 @@ DEFAULT_PARAMS: dict[str, dict] = {
     "most-popular": {},
     "random": {"seed": 42},
     "biased-als": {"n_factors": 20, "n_iterations": 40, "lambda_": 0.1},
-    "biased-cf": {"k": 50, "reg": 10.0},
+    "biased-item-cf": {"k": 50, "reg": 10.0},
     "bpr": {"n_factors": 50, "n_epochs": 20, "lr": 0.05, "lambda_": 0.01},
-    "ials": {"n_factors": 50, "n_iterations": 15, "lambda_": 0.1, "alpha": 40.0},
+    "implicit-als": {"n_factors": 50, "n_iterations": 15, "lambda_": 0.1, "alpha": 40.0},
+    "adjusted-bpr": {"n_factors": 50, "n_epochs": 20, "lr": 0.05, "lambda_": 0.01},
 }
 
 
