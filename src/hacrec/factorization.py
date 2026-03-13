@@ -6,7 +6,7 @@ import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
 
-from .collaborativefiltering import Recommender, evaluate_predictions
+from .recommender import Recommender, evaluate_predictions
 from .transform import OUT_DIR
 
 
