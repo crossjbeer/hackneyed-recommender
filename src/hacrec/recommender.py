@@ -67,7 +67,7 @@ def evaluate_recommendations(
     k: int = 10,
     relevance_threshold: float = 4.0,
 ) -> dict:
-    """Compute ranking metrics (Precision@K, Recall@K, NDCG@K) against held-out data.
+    """Compute ranking metrics (Precision@K, Recall@K, NDCG@K, HitRate@K) against held-out data.
 
     An item is considered *relevant* for a user if its rating in eval_df
     is >= relevance_threshold.
@@ -75,6 +75,7 @@ def evaluate_recommendations(
     precisions = []
     recalls = []
     ndcgs = []
+    hitrates = []
 
     for uid, group in eval_df.groupby("userId"):
         relevant = set(group.loc[group["rating"] >= relevance_threshold, "movieId"].astype(int))
@@ -82,14 +83,12 @@ def evaluate_recommendations(
             continue
 
         recs = model.recommend(int(uid), n=k)
-        print(recs)
         rec_items = [iid for iid, _ in recs]
 
         hits = [1.0 if iid in relevant else 0.0 for iid in rec_items]
-        print(hits)
-
         precisions.append(sum(hits) / k)
         recalls.append(sum(hits) / len(relevant))
+        hitrates.append(1.0 if sum(hits) > 0 else 0.0)
 
         # DCG / IDCG
         dcg = sum(h / np.log2(i + 2) for i, h in enumerate(hits))
@@ -101,6 +100,7 @@ def evaluate_recommendations(
         "precision_at_k": float(np.mean(precisions)),
         "recall_at_k": float(np.mean(recalls)),
         "ndcg_at_k": float(np.mean(ndcgs)),
+        "hit_rate_at_k": float(np.mean(hitrates)),
         "k": k,
         "num_users_evaluated": len(precisions),
     }
