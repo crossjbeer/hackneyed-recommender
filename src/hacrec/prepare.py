@@ -9,11 +9,6 @@ from .util import project_root, ensure_dir
 
 MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
 
-def ensure_data_dir(root: Path) -> Path:
-	"""Create and return the project's data directory."""
-	data_dir = ensure_dir(root, "data")
-	return data_dir
-
 def download_movielens(data_dir: Path) -> Path:
 	"""Download the MovieLens zip file into the data directory."""
 	zip_path = data_dir / "ml-latest-small.zip"
@@ -39,7 +34,7 @@ def extract_movielens(zip_path: Path, data_dir: Path) -> Path:
 
 def main() -> None:
 	root = project_root()
-	data_dir = ensure_data_dir(root)
+	data_dir = ensure_dir(root, "data")
 	zip_path = download_movielens(data_dir)
 	extracted_dir = extract_movielens(zip_path, data_dir)
 	print(f"MovieLens dataset is ready at {extracted_dir}")
