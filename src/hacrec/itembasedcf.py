@@ -90,7 +90,6 @@ class ItemBasedCF(Recommender):
 
         return float(np.dot(sims, ratings) / denom)
     
-    
     def recommend(self, user_id: int, n: int = 10) -> list[tuple[int, float]]:
         user_row = self.urm[user_id]
 
