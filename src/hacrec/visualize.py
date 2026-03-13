@@ -53,6 +53,7 @@ def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path) -> None:
 
 def plot_ranking_metrics(rank_df: pd.DataFrame, viz_dir: path.Path) -> None:
     """Grouped bar chart of Precision@K, Recall@K, NDCG@K."""
+    rank_df = rank_df.sort_values("recall_at_k")
     k = int(rank_df["k"].iloc[0])
 
     fig = go.Figure(
