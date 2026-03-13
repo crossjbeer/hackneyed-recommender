@@ -6,7 +6,8 @@ import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
 
-from .collaborativefiltering import ItemBasedCF, Recommender, evaluate_predictions, evaluate_recommendations
+from .collaborativefiltering import ItemBasedCF
+from .recommender import evaluate_predictions, evaluate_recommendations, Recommender
 from .baselines import (
     GlobalMeanBaseline,
     UserMeanBaseline,
@@ -114,7 +115,7 @@ def run_evaluation(
         print(f"\n{'=' * 60}")
         print(f"Evaluating strategy: {name}")   
         print(f"{'=' * 60}")
-        
+
         model = build_model(name)
         model.fit(urm)
 
@@ -168,10 +169,11 @@ def run_evaluation(
         for uid_str, items in data["sample_recs"].items():
             for rank, (iid, score) in enumerate(items, start=1):
                 original_iid = item_mapping_reverse.get(iid, iid)
+                original_uid = user_mapping_reverse.get(int(uid_str), int(uid_str))
                 title = title_mapping.get(original_iid, f"item-{iid}")
                 rec_rows.append({
                     "strategy": name,
-                    "user_id": uid_str,
+                    "user_id": original_uid,
                     "rank": rank,
                     "item_id": iid,
                     "title": title,
