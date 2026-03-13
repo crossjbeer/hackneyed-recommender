@@ -1,17 +1,35 @@
 # Hackneyed Recommender
 
-A simple, __hackneyed__ recommender system for the MovieLens Dataset.
-Using Collaborative Filtering and Matrix Factorization. 
-Demonstrating comparative recommender performance and various use cases. 
-An exploratory project. 
+How many times have you wanted to compare the relative performance of several recommendation strategies on the MovieLens Dataset? 
+Never?  
+
+Well now you can! 
+
+Fit recommenders yourself and evaluate exciting metrics like NDCG@10, RMSE, and more! 
+See how `Prediction` models compare against `Ranking` models. 
+Try out the recommenders yourself in our interactive playground! 
 
 ## How it works
 - `prepare.py`   -- Extracts the MovieLens dataset
-- `transform.py` -- Transforms raw .csv datasets into pandas dataframes. Builds our User-Item Rating Matrix (URM)
-- `Recommendation Engines`
-  - `collaborativefiltering.py` -- Runs Collaborative Filtering over our URM
-  - `factorization.py`          -- Runs Matrix Factorization using Alternating Least Squares (ALS) over our URM 
-- `eval.py` -- A simple endpoint to run and compare various recommendation engines
+- `transform.py` -- Transforms raw .csv datasets into pandas dataframes. Builds our User-Item Rating Matrix (URM) 
+- `eval.py`      -- Run and compare various `Recommenders` on the URM
+- `visualize.py` -- Produce an information dashboard to visualize performance
+- `api.py`       -- FastAPI to interact with our Playground Frontend
+
+### Recommendation Engines
+There are two classes of `Recommenders`, one optimizing for `Prediction`, the other optimizing for `Ranking`. 
+
+The Abstract Base Class (ABC) is represented at `recommender.py`. Specific instances are listed below: 
+
+- Prediction: 
+  - `itembasedcf.py`                  -- Item-Based CF using Cosine Similarity 
+  - `biaseditembasedcf.py`            -- Biased Item-Based CF using Baseline-Corrected Residuals 
+  - `alsfactorization.py`             -- Matrix Factorization using Alternating Least Squares (ALS)
+  - `biasedalsfactorization.py`       -- Biased Matrix Factorization using Baseline-Corrected Residuals 
+- Ranking: 
+  - `implicitalsfactorization.py`     -- Matrix Factorization using Implicit ALS 
+  - `bprfactorization.py`             -- Matrix Factorization using Bayesian Personalized Ranking (BPR)
+  - `adjustedbprfactorization.py`     -- BPR Factorization with adjustements to reduce Popularity Bias
 
 ## Installation
 
