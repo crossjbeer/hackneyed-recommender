@@ -8,11 +8,21 @@ version = "0.1.0"
 description = "A basic recommender system project"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["numpy", "pandas", "scipy", "plotly"]
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/hacrec"]
+dependencies = [
+"numpy",
+"pandas",
+"scipy",
+"plotly",
+"fastapi",
+"uvicorn",
+"pytest>=9.0.2"
+]
 
 [project.scripts]
 hacreceval = "hacrec.eval:main"
 hacrecviz = "hacrec.visualize:main"
+hacrecapi = "hacrec.api:main"
+hacrecprepare = "hacrec.prepare:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hacrec"]
