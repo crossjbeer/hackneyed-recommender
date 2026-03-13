@@ -55,21 +55,38 @@ class ItemBasedCF(Recommender):
             return 0.0
 
         return float(np.dot(sims, ratings) / denom)
-
+    
+    
     def recommend(self, user_id: int, n: int = 10) -> list[tuple[int, float]]:
-        num_items = self.urm.shape[1]
-        rated_items = set(self.urm[user_id].indices)
+        user_row = self.urm[user_id]
 
-        scores = []
-        for item_id in range(num_items):
-            if item_id in rated_items:
-                continue
-            score = self.predict(user_id, item_id)
-            scores.append((item_id, score))
+        if user_row.nnz == 0:
+            return []
 
-        scores.sort(key=lambda x: x[1], reverse=True)
-        return scores[:n]
+        rated_mask = np.zeros(self.urm.shape[1], dtype=bool)
+        rated_mask[user_row.indices] = True
 
+        numerators = (user_row @ self.similarity).toarray().ravel()
+
+        user_implicit = sp.csr_matrix(
+            (np.ones_like(user_row.data), user_row.indices, [0, len(user_row.indices)]),
+            shape=user_row.shape,
+        )
+        denominators = (user_implicit @ abs(self.similarity)).toarray().ravel()
+
+        scores = np.divide(
+            numerators,
+            denominators,
+            out=np.zeros_like(numerators, dtype=float),
+            where=denominators != 0,
+        )
+
+        scores[rated_mask] = -np.inf
+
+        top_n_idx = np.argpartition(scores, -n)[-n:]
+        top_n_idx = top_n_idx[np.argsort(-scores[top_n_idx])]
+
+        return [(int(i), float(scores[i])) for i in top_n_idx]
 
 # ------------------------------------------------------------------
 # CLI entry point
