@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hackneyed Recommender</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Hackneyed Recommender</h1>
+    <p class="subtitle">Rate some movies, get recommendations.</p>
+  </header>
+
+  <main>
+    <!-- ============================================================
+         VIEW 1: MOVIE RATING
+         The user browses/searches movies and assigns star ratings.
+         ============================================================ -->
+    <section id="rating-view" class="view active">
+      <div class="controls-bar">
+        <div class="search-box">
+          <input
+            type="text"
+            id="search-input"
+            placeholder="Search movies by title or genre…"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="rating-summary">
+          <span id="rated-count">0</span> movies rated
+        </div>
+      </div>
+
+      <div class="genre-filters" id="genre-filters">
+        <!-- Genre pills populated by JS -->
+      </div>
+
+      <div class="movie-grid" id="movie-grid">
+        <!-- Movie cards populated by JS -->
+      </div>
+
+      <div id="load-more-container" class="load-more-container">
+        <button id="load-more-btn" class="btn btn-secondary">Load More</button>
+      </div>
+
+      <div class="submit-bar">
+        <div class="algorithm-picker">
+          <label for="algorithm-select">Algorithm:</label>
+          <select id="algorithm-select">
+            <option value="item-cf">Collaborative Filtering (Item-based)</option>
+            <option value="als">ALS Matrix Factorization</option>
+          </select>
+        </div>
+        <button id="submit-btn" class="btn btn-primary" disabled>
+          Get Recommendations
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         VIEW 2: LOADING
+         Shown while the API processes the recommendation request.
+         Collaborative filtering can be slow — this keeps the user informed.
+         ============================================================ -->
+    <section id="loading-view" class="view">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <h2>Generating recommendations…</h2>
+        <p class="loading-detail" id="loading-detail">
+          Running <span id="loading-algorithm">Item-based CF</span> over the MovieLens dataset
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         VIEW 3: RESULTS
+         Displays the top-10 recommended movies returned by the API.
+         ============================================================ -->
+    <section id="results-view" class="view">
+      <div class="results-header">
+        <h2>Your Top 10 Recommendations</h2>
+        <p class="results-meta">
+          via <span id="results-algorithm"></span>
+        </p>
+      </div>
+
+      <div class="results-list" id="results-list">
+        <!-- Recommendation cards populated by JS -->
+      </div>
+
+      <div class="results-actions">
+        <button id="back-btn" class="btn btn-secondary">← Rate More Movies</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      Powered by the
+      <a href="https://grouplens.org/datasets/movielens/" target="_blank" rel="noopener">
+        MovieLens
+      </a>
+      dataset &middot; Hackneyed Recommender
+    </p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,400 @@
+/* ==========================================================================
+   Hackneyed Recommender — Stylesheet
+   ========================================================================== */
+
+/* --- Reset & Custom Properties ------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:          #0f1117;
+  --surface:     #1a1d27;
+  --surface-2:   #242836;
+  --border:      #2e3345;
+  --text:        #e4e6ef;
+  --text-muted:  #8b8fa3;
+  --accent:      #6c63ff;
+  --accent-hover:#837dff;
+  --gold:        #f5c518;
+  --gold-dim:    #3a3424;
+  --danger:      #e74c5e;
+  --success:     #34d399;
+  --radius:      10px;
+  --transition:  0.2s ease;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* --- Header -------------------------------------------------------------- */
+header {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+}
+header h1 {
+  font-size: 1.8rem;
+  letter-spacing: -0.02em;
+}
+.subtitle {
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  font-size: 0.95rem;
+}
+
+/* --- Views (state machine) ----------------------------------------------- */
+.view { display: none; }
+.view.active { display: block; }
+
+main {
+  flex: 1;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+
+/* --- Controls bar (search + count) --------------------------------------- */
+.controls-bar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.search-box {
+  flex: 1;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.search-box input:focus {
+  border-color: var(--accent);
+}
+.search-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.rating-summary {
+  white-space: nowrap;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* --- Genre filter pills -------------------------------------------------- */
+.genre-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.genre-pill {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all var(--transition);
+  user-select: none;
+}
+.genre-pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.genre-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* --- Movie grid ---------------------------------------------------------- */
+.movie-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+/* --- Movie card ---------------------------------------------------------- */
+.movie-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.movie-card:hover {
+  border-color: var(--accent);
+}
+.movie-card.rated {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold-dim);
+}
+
+.movie-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.movie-genres {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* --- Star rating --------------------------------------------------------- */
+.star-rating {
+  display: flex;
+  gap: 0.2rem;
+  margin-top: auto;
+  padding-top: 0.4rem;
+}
+
+.star {
+  cursor: pointer;
+  font-size: 1.4rem;
+  color: var(--border);
+  transition: color var(--transition), transform 0.1s ease;
+  user-select: none;
+  line-height: 1;
+}
+.star:hover,
+.star.hovered {
+  color: var(--gold);
+  transform: scale(1.15);
+}
+.star.filled {
+  color: var(--gold);
+}
+
+/* --- Load more ----------------------------------------------------------- */
+.load-more-container {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+/* --- Submit bar ---------------------------------------------------------- */
+.submit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.algorithm-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.algorithm-picker label {
+  color: var(--text-muted);
+}
+.algorithm-picker select {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.88rem;
+  outline: none;
+  cursor: pointer;
+}
+.algorithm-picker select:focus {
+  border-color: var(--accent);
+}
+
+/* --- Buttons ------------------------------------------------------------- */
+.btn {
+  padding: 0.6rem 1.4rem;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), opacity var(--transition);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+  border-color: var(--accent);
+}
+
+/* --- Loading view -------------------------------------------------------- */
+#loading-view {
+  text-align: center;
+  padding-top: 6rem;
+}
+.loading-content h2 {
+  margin-top: 1.5rem;
+  font-size: 1.3rem;
+}
+.loading-detail {
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Spinner */
+.spinner {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border: 4px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- Results view -------------------------------------------------------- */
+.results-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.results-header h2 {
+  font-size: 1.4rem;
+}
+.results-meta {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* --- Recommendation card ------------------------------------------------- */
+.rec-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  transition: border-color var(--transition);
+}
+.rec-card:hover {
+  border-color: var(--accent);
+}
+
+.rec-rank {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 2rem;
+  text-align: center;
+}
+
+.rec-info {
+  flex: 1;
+}
+.rec-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.rec-genres {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.rec-score {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.rec-score strong {
+  color: var(--gold);
+  font-size: 1rem;
+}
+
+.results-actions {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* --- Footer -------------------------------------------------------------- */
+footer {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border);
+}
+
+/* --- Responsive ---------------------------------------------------------- */
+@media (max-width: 600px) {
+  .controls-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .submit-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .algorithm-picker {
+    justify-content: space-between;
+  }
+  .movie-grid {
+    grid-template-columns: 1fr;
+  }
+}
