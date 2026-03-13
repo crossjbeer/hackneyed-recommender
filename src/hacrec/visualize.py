@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from .transform import OUT_DIR
-from .prepare import ensure_dir
+from .util import ensure_dir
 
 
 def _load_json(filepath: path.Path) -> dict | list:

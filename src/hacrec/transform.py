@@ -7,7 +7,7 @@ OUT_DIR = "out/"
 import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
-from .prepare import ensure_dir
+from .util import ensure_dir
 
 def save_mapping(mapping: dict, filename: str) -> None:
     """Save a mapping dictionary to a CSV file."""
@@ -48,19 +48,19 @@ def split_ratings(ratings_df: pd.DataFrame) -> tuple:
     """Split ratings into train, validation, and test sets using per-user temporal order.
 
     For each user:
-      - validation: their most recent rating
-      - test:       their second-most-recent rating
+      - validation: their second-most recent rating
+      - test:       their most recent rating
       - train:      all remaining ratings
 
     Returns (train_df, val_df, test_df).
     """
     ratings_df = ratings_df.sort_values(['userId', 'timestamp'])
 
-    # Last rating per user → validation
+    # Last rating per user → test
     test_idx = ratings_df.groupby('userId').tail(1).index
     remaining_df = ratings_df.drop(index=test_idx)
 
-    # Second-to-last rating per user → test
+    # Second-to-last rating per user → validation
     val_idx = remaining_df.groupby('userId').tail(1).index
     train_df = remaining_df.drop(index=val_idx)
 
