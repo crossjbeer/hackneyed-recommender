@@ -29,8 +29,8 @@ class BPRFactorization(Recommender):
     """Bayesian Personalized Ranking matrix factorization.
 
     Factorises the user-item matrix R ≈ U @ V^T where U is (n_users, n_factors)
-    and V is (n_items, n_factors).  Training uses pairwise SGD: for every
-    observed interaction (u, i) a random unobserved item j is drawn and the
+    and V is (n_items, n_factors).  
+    Training uses pairwise SGD: for everyobserved interaction (u, i) a random unobserved item j is drawn and the
     parameters are updated to increase the predicted score difference x_uij.
 
     Parameters
