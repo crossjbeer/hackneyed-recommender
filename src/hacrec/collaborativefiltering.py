@@ -16,21 +16,58 @@ class ItemBasedCF(Recommender):
     Predictions are weighted averages of the user's known ratings,
     weighted by similarity to the target item (top-k neighbors).
     """
-
     def __init__(self, k: int = 50):
         self.k = k
-        self.similarity: sp.csr_matrix | None = None
+        self.similarity_full: sp.csr_matrix | None = None
+        self.similarity_topk: sp.csr_matrix | None = None
+        self.abs_similarity_topk: sp.csr_matrix | None = None
         self.urm: sp.csr_matrix | None = None
 
+    def _keep_topk_per_row(self, mat: sp.csr_matrix, k: int) -> sp.csr_matrix:
+        """Keep only top-k values per row of a CSR matrix."""
+        mat = mat.tocsr()
+        data = []
+        indices = []
+        indptr = [0]
+
+        for i in range(mat.shape[0]):
+            start, end = mat.indptr[i], mat.indptr[i + 1]
+            row_data = mat.data[start:end]
+            row_idx = mat.indices[start:end]
+
+            if len(row_data) > k:
+                topk = np.argpartition(row_data, -k)[-k:]
+                row_data = row_data[topk]
+                row_idx = row_idx[topk]
+
+                # Optional: sort descending for cleaner structure
+                order = np.argsort(-row_data)
+                row_data = row_data[order]
+                row_idx = row_idx[order]
+
+            data.extend(row_data)
+            indices.extend(row_idx)
+            indptr.append(len(data))
+
+        return sp.csr_matrix(
+            (np.array(data), np.array(indices), np.array(indptr)),
+            shape=mat.shape,
+        )
+
     def fit(self, urm: sp.csr_matrix) -> None:
-        self.urm = urm
+        self.urm = urm.tocsr()
 
-        # Column-normalise URM so that dot products yield cosine similarity.
-        norms = np.sqrt(np.array(urm.power(2).sum(axis=0)).flatten())
+        norms = np.sqrt(np.asarray(self.urm.power(2).sum(axis=0)).ravel())
         norms[norms == 0] = 1.0
-        urm_normed = urm @ sp.diags(1.0 / norms)
+        urm_normed = self.urm @ sp.diags(1.0 / norms)
 
-        self.similarity = (urm_normed.T @ urm_normed).tocsr()
+        sim = (urm_normed.T @ urm_normed).tocsr()
+        sim.setdiag(0.0)
+        sim.eliminate_zeros()
+
+        self.similarity_full = sim
+        self.similarity_topk = self._keep_topk_per_row(sim, self.k)
+        self.abs_similarity_topk = abs(self.similarity_topk)
 
     def predict(self, user_id: int, item_id: int) -> float:
         user_row = self.urm[user_id]
@@ -40,11 +77,8 @@ class ItemBasedCF(Recommender):
         if len(rated_items) == 0:
             return 0.0
 
-        sims = np.array(
-            self.similarity[item_id, rated_items].todense()
-        ).flatten()
+        sims = self.similarity_full[item_id, rated_items].toarray().ravel()
 
-        # Keep only the k most-similar neighbours.
         if len(sims) > self.k:
             top_k_idx = np.argpartition(sims, -self.k)[-self.k:]
             sims = sims[top_k_idx]
@@ -63,16 +97,15 @@ class ItemBasedCF(Recommender):
         if user_row.nnz == 0:
             return []
 
-        rated_mask = np.zeros(self.urm.shape[1], dtype=bool)
-        rated_mask[user_row.indices] = True
+        # Weighted sums for all items at once
+        numerators = (user_row @ self.similarity_topk).toarray().ravel()
 
-        numerators = (user_row @ self.similarity).toarray().ravel()
-
+        # Denominator uses binary "has rated" mask
         user_implicit = sp.csr_matrix(
             (np.ones_like(user_row.data), user_row.indices, [0, len(user_row.indices)]),
             shape=user_row.shape,
         )
-        denominators = (user_implicit @ abs(self.similarity)).toarray().ravel()
+        denominators = (user_implicit @ self.abs_similarity_topk).toarray().ravel()
 
         scores = np.divide(
             numerators,
@@ -81,12 +114,20 @@ class ItemBasedCF(Recommender):
             where=denominators != 0,
         )
 
-        scores[rated_mask] = -np.inf
+        # Exclude seen items
+        scores[user_row.indices] = -np.inf
 
-        top_n_idx = np.argpartition(scores, -n)[-n:]
-        top_n_idx = top_n_idx[np.argsort(-scores[top_n_idx])]
+        if n >= len(scores):
+            top_n_idx = np.argsort(-scores)
+        else:
+            top_n_idx = np.argpartition(scores, -n)[-n:]
+            top_n_idx = top_n_idx[np.argsort(-scores[top_n_idx])]
 
-        return [(int(i), float(scores[i])) for i in top_n_idx]
+        return [
+            (int(i), float(scores[i]))
+            for i in top_n_idx
+            if np.isfinite(scores[i])
+        ]
 
 # ------------------------------------------------------------------
 # CLI entry point
