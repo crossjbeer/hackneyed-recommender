@@ -47,34 +47,7 @@ def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path) -> None:
 
 
 # ------------------------------------------------------------------
-# 2. ALS loss curve
-# ------------------------------------------------------------------
-
-
-def plot_als_loss(out_dir: path.Path, viz_dir: path.Path) -> None:
-    """Line plot of ALS training loss per iteration."""
-    loss_path = out_dir / "als_loss_history.json"
-    if not loss_path.exists():
-        print("  Skipping ALS loss plot (als_loss_history.json not found)")
-        return
-
-    loss_history: list[float] = _load_json(loss_path)
-    iterations = list(range(1, len(loss_history) + 1))
-
-    fig = go.Figure(
-        data=go.Scatter(x=iterations, y=loss_history, mode="lines+markers")
-    )
-    fig.update_layout(
-        title="ALS Training Loss per Iteration",
-        xaxis_title="Iteration",
-        yaxis_title="Loss (MSE + L2 reg)",
-    )
-    fig.write_html(viz_dir / "als_loss_curve.html")
-    print("  Saved als_loss_curve.html")
-
-
-# ------------------------------------------------------------------
-# 3. Ranking metrics comparison
+# 2. Ranking metrics comparison
 # ------------------------------------------------------------------
 
 
@@ -133,20 +106,7 @@ def plot_recommendation_bars(rec_df: pd.DataFrame, viz_dir: path.Path) -> None:
 
 def build_dashboard(viz_dir: path.Path) -> None:
     """Generate an index.html dashboard that embeds all plot iframes."""
-    als_section = ""
-    if (viz_dir / "als_loss_curve.html").exists():
-        als_section = """
-    <section id="training-loss">
-      <h2>Training Loss</h2>
-      <div class="grid">
-        <div class="card full">
-          <h3>ALS Loss Curve</h3>
-          <iframe src="als_loss_curve.html"></iframe>
-        </div>
-      </div>
-    </section>"""
-
-    html = f"""\
+    html = """\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -154,7 +114,7 @@ def build_dashboard(viz_dir: path.Path) -> None:
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Evaluation Dashboard</title>
 <style>
-  :root {{
+  :root {
     --bg: #0f1117;
     --surface: #161b22;
     --card-bg: #1c2128;
@@ -166,50 +126,50 @@ def build_dashboard(viz_dir: path.Path) -> None:
     --gradient-start: #58a6ff;
     --gradient-end: #bc8cff;
     --radius: 12px;
-  }}
+  }
 
-  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  body {{
+  body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                  "Helvetica Neue", Arial, sans-serif;
     background: var(--bg);
     color: var(--text);
     line-height: 1.5;
     min-height: 100vh;
-  }}
+  }
 
-  .wrapper {{
+  .wrapper {
     margin: 0 auto;
     padding: 2.5rem 2rem 4rem;
-  }}
+  }
 
   /* ---- header ---- */
-  header {{
+  header {
     margin-bottom: 2rem;
-  }}
-  header h1 {{
+  }
+  header h1 {
     font-size: 2rem;
     font-weight: 700;
     background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: .35rem;
-  }}
-  header .subtitle {{
+  }
+  header .subtitle {
     color: var(--text-secondary);
     font-size: .9rem;
-  }}
-  header .subtitle code {{
+  }
+  header .subtitle code {
     background: var(--accent-soft);
     padding: .15em .45em;
     border-radius: 4px;
     font-size: .85em;
     color: var(--accent);
-  }}
+  }
 
   /* ---- nav ---- */
-  nav {{
+  nav {
     position: sticky;
     top: 0;
     z-index: 100;
@@ -220,8 +180,8 @@ def build_dashboard(viz_dir: path.Path) -> None:
     gap: .25rem;
     padding: .35rem;
     margin-bottom: 2.5rem;
-  }}
-  nav a {{
+  }
+  nav a {
     text-decoration: none;
     color: var(--text-secondary);
     padding: .5rem 1rem;
@@ -229,69 +189,69 @@ def build_dashboard(viz_dir: path.Path) -> None:
     font-size: .85rem;
     font-weight: 500;
     transition: background .15s, color .15s;
-  }}
-  nav a:hover {{
+  }
+  nav a:hover {
     background: var(--accent-soft);
     color: var(--accent);
-  }}
+  }
 
   /* ---- sections ---- */
-  section {{
+  section {
     margin-bottom: 3rem;
-  }}
-  section h2 {{
+  }
+  section h2 {
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--text);
     margin-bottom: 1rem;
     padding-left: .75rem;
     border-left: 3px solid var(--accent);
-  }}
+  }
 
   /* ---- grid / cards ---- */
-  .grid {{
+  .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
     gap: 1.25rem;
-  }}
-  .card {{
+  }
+  .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1.25rem;
     transition: border-color .2s, box-shadow .2s;
-  }}
-  .card:hover {{
+  }
+  .card:hover {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(0,0,0,.35);
-  }}
-  .card.full {{
+  }
+  .card.full {
     grid-column: 1 / -1;
-  }}
-  .card h3 {{
+  }
+  .card h3 {
     font-size: .85rem;
     font-weight: 500;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: .04em;
     margin-bottom: .75rem;
-  }}
+  }
 
-  iframe {{
+  iframe {
     width: 100%;
     height: 70vh;
     min-height: 400px;
     border: none;
     border-radius: 8px;
     background: #fff;
-  }}
+  }
 
   /* ---- responsive ---- */
-  @media (max-width: 640px) {{
-    .wrapper {{ padding: 1.25rem 1rem; }}
-    .grid {{ grid-template-columns: 1fr; }}
-    nav {{ flex-wrap: wrap; }}
-  }}
+  @media (max-width: 640px) {
+    .wrapper { padding: 1.25rem 1rem; }
+    .grid { grid-template-columns: 1fr; }
+    nav { flex-wrap: wrap; }
+  }
 </style>
 </head>
 <body>
@@ -304,7 +264,6 @@ def build_dashboard(viz_dir: path.Path) -> None:
 
 <nav>
   <a href="#prediction-metrics">Prediction Metrics</a>
-  <a href="#training-loss">Training Loss</a>
   <a href="#ranking-metrics">Ranking Metrics</a>
   <a href="#recommendations">Recommendations</a>
 </nav>
@@ -318,7 +277,7 @@ def build_dashboard(viz_dir: path.Path) -> None:
     </div>
   </div>
 </section>
-{als_section}
+
 <section id="ranking-metrics">
   <h2>Ranking Metrics</h2>
   <div class="grid">
@@ -372,7 +331,6 @@ def main() -> None:
     print("Generating visualisations \u2026")
 
     plot_rmse_mae(pred_df, viz_dir)
-    plot_als_loss(out, viz_dir)
     plot_ranking_metrics(rank_df, viz_dir)
 
     if recs_path.exists():
