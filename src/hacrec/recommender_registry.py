@@ -47,6 +47,33 @@ class RecommenderRegistry:
         cls, defaults = self._entries[name]
         return cls(**{**defaults, **overrides})
 
+    def checkpoint_path(
+        self,
+        name: str,
+        checkpoint_dir: str | pathlib.Path,
+        **overrides,
+    ) -> pathlib.Path:
+        """Return the checkpoint path for *name* with the given *overrides*.
+
+        The filename encodes all effective parameters (registry defaults merged
+        with *overrides*) so that models trained with different hyperparameters
+        are stored in separate files and never overwrite each other.
+        """
+        if name not in self._entries:
+            raise ValueError(
+                f"Unknown strategy '{name}'. Available: {self.names}"
+            )
+        _, defaults = self._entries[name]
+        effective_params = {**defaults, **overrides}
+        if effective_params:
+            param_str = "_".join(
+                f"{k}={v}" for k, v in sorted(effective_params.items())
+            )
+            filename = f"{name}_{param_str}.pkl"
+        else:
+            filename = f"{name}.pkl"
+        return pathlib.Path(checkpoint_dir) / filename
+
     def build_or_load(
         self,
         name: str,
@@ -60,10 +87,13 @@ class RecommenderRegistry:
         If a checkpoint for *name* already exists in *checkpoint_dir* and
         *force_refit* is False, the model is loaded directly.  Otherwise the
         model is fitted from scratch and the checkpoint is written.
+
+        The checkpoint filename encodes all effective parameters so that models
+        with different hyperparameters are stored in separate files.
         """
         checkpoint_dir = pathlib.Path(checkpoint_dir)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        checkpoint_path = checkpoint_dir / f"{name}.pkl"
+        checkpoint_path = self.checkpoint_path(name, checkpoint_dir, **overrides)
 
         if not force_refit and checkpoint_path.exists():
             return joblib.load(checkpoint_path)
