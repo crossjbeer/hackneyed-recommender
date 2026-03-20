@@ -57,15 +57,9 @@ ITEM_MAPPING: dict[int, int] = _load_item_mapping()          # originalId → co
 ITEM_MAPPING_REV: dict[int, int] = {v: k for k, v in ITEM_MAPPING.items()}  # col → originalId
 URM: sp.csr_matrix = sp.load_npz(str(OUT_DIR / "user_item_matrix.npz"))
 
-ALGORITHM_LABELS = {
-    "item-based-cf": "Item-based Collaborative Filtering",
-    "als": "ALS Matrix Factorization",
-    "biased-als": "Biased ALS Matrix Factorization",
-    "biased-item-cf": "Biased Item-based Collaborative Filtering",
-    "implicit-als": "Implicit ALS (iALS)",
-    "bpr": "Bayesian Personalized Ranking (BPR)",
-    "adjusted-bpr": "Adjusted BPR (Popularity-Debiased)",
-    "random": "Random (Sanity Check)",
+ALGORITHM_LABELS: dict[str, str] = {
+    name: str(registry.build(name))
+    for name in registry.names
 }
 
 # ------------------------------------------------------------------
@@ -113,7 +107,7 @@ def recommend(req: RecommendRequest):
     4.  Call model.recommend(new_user_id, n=10).
     5.  Map internal item indices back to movie metadata and return.
     """
-    if req.algorithm not in ALGORITHM_LABELS:
+    if req.algorithm not in registry:
         raise HTTPException(400, f"Unknown algorithm '{req.algorithm}'. Choose from: {list(ALGORITHM_LABELS)}")
 
     # --- Translate user ratings into URM column indices ----------------
