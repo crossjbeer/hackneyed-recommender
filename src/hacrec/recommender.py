@@ -1,9 +1,7 @@
-"""Base recommender interface and model-agnostic evaluation utilities."""
+"""Base recommender interface for recommendation models."""
 
 from abc import ABC, abstractmethod
 
-import numpy as np
-import pandas as pd
 import scipy.sparse as sp
 
 
@@ -40,77 +38,15 @@ class Recommender(ABC):
         ...
 
 
-# ------------------------------------------------------------------
-# Model-agnostic evaluation loop (reusable for any Recommender)
-# ------------------------------------------------------------------
+def evaluate_predictions(model, eval_df) -> dict:
+    """Compatibility wrapper for the centralized evaluation module."""
+    from .eval import evaluate_predictions as eval_predictions
 
-def evaluate_predictions(model: Recommender, eval_df: pd.DataFrame) -> dict:
-    """Compute RMSE and MAE for every (user, item) pair in *eval_df*.
-
-    Works with any Recommender subclass, so the same loop can be
-    reused once matrix factorisation is implemented.
-    """
-    predictions = []
-    actuals = []
-
-    for row in eval_df.itertuples(index=False):
-        pred = model.predict(int(row.userId), int(row.movieId))
-        predictions.append(pred)
-        actuals.append(float(row.rating))
-
-    predictions = np.array(predictions)
-    actuals = np.array(actuals)
-
-    rmse = float(np.sqrt(np.mean((predictions - actuals) ** 2)))
-    mae = float(np.mean(np.abs(predictions - actuals)))
-
-    return {
-        "rmse": rmse,
-        "mae": mae,
-        "num_predictions": len(predictions),
-    }
+    return eval_predictions(model, eval_df)
 
 
-def evaluate_recommendations(
-    model: Recommender,
-    eval_df: pd.DataFrame,
-    k: int = 10,
-    relevance_threshold: float = 4.0,
-) -> dict:
-    """Compute ranking metrics (Precision@K, Recall@K, NDCG@K, HitRate@K) against held-out data.
+def evaluate_recommendations(model, eval_df, k: int = 10, relevance_threshold: float = 4.0) -> dict:
+    """Compatibility wrapper for the centralized evaluation module."""
+    from .eval import evaluate_recommendations as eval_recommendations_impl
 
-    An item is considered *relevant* for a user if its rating in eval_df
-    is >= relevance_threshold.
-    """
-    precisions = []
-    recalls = []
-    ndcgs = []
-    hitrates = []
-
-    for uid, group in eval_df.groupby("userId"):
-        relevant = set(group.loc[group["rating"] >= relevance_threshold, "movieId"].astype(int))
-        if len(relevant) == 0:
-            continue
-
-        recs = model.recommend(int(uid), n=k)
-        rec_items = [iid for iid, _ in recs]
-
-        hits = [1.0 if iid in relevant else 0.0 for iid in rec_items]
-        precisions.append(sum(hits) / k)
-        recalls.append(sum(hits) / len(relevant))
-        hitrates.append(1.0 if sum(hits) > 0 else 0.0)
-
-        # DCG / IDCG
-        dcg = sum(h / np.log2(i + 2) for i, h in enumerate(hits))
-        ideal_hits = min(len(relevant), k)
-        idcg = sum(1.0 / np.log2(i + 2) for i in range(ideal_hits))
-        ndcgs.append(dcg / idcg if idcg > 0 else 0.0)
-
-    return {
-        "precision_at_k": float(np.mean(precisions)),
-        "recall_at_k": float(np.mean(recalls)),
-        "ndcg_at_k": float(np.mean(ndcgs)),
-        "hit_rate_at_k": float(np.mean(hitrates)),
-        "k": k,
-        "num_users_evaluated": len(precisions),
-    }
+    return eval_recommendations_impl(model, eval_df, k=k, relevance_threshold=relevance_threshold)
