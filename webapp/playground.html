@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Playground — Hackneyed Recommender</title>
+  <style>
+    /* -----------------------------------------------------------------------
+       Reset & Custom Properties
+    ----------------------------------------------------------------------- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f1117;
+      --surface:     #1a1d27;
+      --surface-2:   #242836;
+      --border:      #2e3345;
+      --text:        #e4e6ef;
+      --text-muted:  #8b8fa3;
+      --accent:      #6c63ff;
+      --accent-hover:#837dff;
+      --gold:        #f5c518;
+      --danger:      #e74c5e;
+      --success:     #34d399;
+      --radius:      10px;
+      --transition:  0.2s ease;
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* -----------------------------------------------------------------------
+       Header
+    ----------------------------------------------------------------------- */
+    header {
+      padding: 1.5rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .back-link {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: color var(--transition), border-color var(--transition);
+    }
+    .back-link:hover { color: var(--text); border-color: var(--accent); text-decoration: none; }
+
+    header h1 { font-size: 1.5rem; letter-spacing: -0.02em; }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      max-width: 1200px;
+      margin: 0.4rem auto 0;
+      padding: 0 1rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Main layout
+    ----------------------------------------------------------------------- */
+    main {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 2rem;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    /* -----------------------------------------------------------------------
+       Panels
+    ----------------------------------------------------------------------- */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+
+    .panel-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Form fields
+    ----------------------------------------------------------------------- */
+    .field { margin-bottom: 1rem; }
+
+    .field > label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .field-desc {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      line-height: 1.4;
+    }
+
+    .field input[type="number"],
+    .field select {
+      width: 100%;
+      padding: 0.55rem 0.8rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .field input[type="number"]:focus,
+    .field select:focus { border-color: var(--accent); }
+
+    .field-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .field-checkbox input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .field-checkbox > label { margin-bottom: 0; cursor: pointer; }
+
+    /* -----------------------------------------------------------------------
+       Hyperparams section
+    ----------------------------------------------------------------------- */
+    .params-section {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .params-section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .no-params {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      font-style: italic;
+    }
+
+    .fit-time-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.4rem 0.7rem;
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+
+    /* -----------------------------------------------------------------------
+       Fit actions bar
+    ----------------------------------------------------------------------- */
+    .fit-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .force-refit-label {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .force-refit-label input { accent-color: var(--accent); cursor: pointer; }
+
+    /* -----------------------------------------------------------------------
+       Fit status
+    ----------------------------------------------------------------------- */
+    .fit-status {
+      margin-top: 1rem;
+      padding: 0.7rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.87rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      line-height: 1.4;
+    }
+    .fit-status.hidden { display: none; }
+
+    .fit-status.fitting {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .fit-status.success {
+      background: rgba(52, 211, 153, 0.08);
+      border: 1px solid rgba(52, 211, 153, 0.25);
+      color: var(--success);
+    }
+    .fit-status.error {
+      background: rgba(231, 76, 94, 0.08);
+      border: 1px solid rgba(231, 76, 94, 0.25);
+      color: var(--danger);
+    }
+
+    .spinner-sm {
+      width: 14px; height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* -----------------------------------------------------------------------
+       Buttons
+    ----------------------------------------------------------------------- */
+    .btn {
+      padding: 0.55rem 1.2rem;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), opacity var(--transition),
+                  border-color var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+    .btn-sm { padding: 0.4rem 0.85rem; font-size: 0.8rem; }
+
+    /* -----------------------------------------------------------------------
+       Models panel
+    ----------------------------------------------------------------------- */
+    .models-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .models-header .panel-title { margin-bottom: 0; }
+
+    .models-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .models-empty {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      text-align: center;
+      padding: 3rem 1rem;
+      line-height: 1.6;
+    }
+
+    /* -----------------------------------------------------------------------
+       Model card
+    ----------------------------------------------------------------------- */
+    .model-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      transition: border-color var(--transition);
+    }
+    .model-card:hover { border-color: var(--accent); }
+
+    .model-card-body { flex: 1; min-width: 0; }
+
+    .model-card-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .model-card-params {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-family: "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+      line-height: 1.6;
+    }
+
+    .model-card-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      background: rgba(52, 211, 153, 0.12);
+      color: var(--success);
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Footer
+    ----------------------------------------------------------------------- */
+    footer {
+      text-align: center;
+      padding: 1.25rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* -----------------------------------------------------------------------
+       Responsive
+    ----------------------------------------------------------------------- */
+    @media (max-width: 820px) {
+      main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a href="/" class="back-link">← Recommendations</a>
+      <h1>Model Playground</h1>
+    </div>
+    <p class="subtitle">Select an algorithm, tweak its hyperparameters, then fit and save it. Fitted models become available in the Recommendations view.</p>
+  </header>
+
+  <main>
+
+    <!-- ================================================================
+         LEFT: Configure & Fit
+    ================================================================ -->
+    <div class="panel" id="configure-panel">
+      <p class="panel-title">Configure Model</p>
+
+      <div class="field">
+        <label for="algo-select">Algorithm</label>
+        <select id="algo-select">
+          <option value="" disabled selected>Loading…</option>
+        </select>
+      </div>
+
+      <div class="params-section" id="params-section">
+        <p class="params-section-title">Hyperparameters</p>
+        <p class="no-params">Select an algorithm above.</p>
+      </div>
+
+      <div class="fit-actions">
+        <button id="fit-btn" class="btn btn-primary" disabled>Fit Model</button>
+        <label class="force-refit-label">
+          <input type="checkbox" id="force-refit">
+          Force re-fit
+        </label>
+      </div>
+
+      <div class="fit-status hidden" id="fit-status"></div>
+    </div>
+
+    <!-- ================================================================
+         RIGHT: Fitted Models
+    ================================================================ -->
+    <div class="panel" id="models-panel">
+      <div class="models-header">
+        <p class="panel-title">Fitted Models</p>
+        <a href="/" class="btn btn-secondary btn-sm">Use in Recommendations →</a>
+      </div>
+
+      <div id="models-list" class="models-list" style="display:none"></div>
+
+      <div id="models-empty" class="models-empty">
+        No models fitted yet.<br>
+        Configure a model on the left and click <strong>Fit Model</strong>.
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p>
+      Powered by the
+      <a href="https://grouplens.org/datasets/movielens/" target="_blank" rel="noopener">MovieLens</a>
+      dataset &middot; Hackneyed Recommender
+    </p>
+  </footer>
+
+  <script>
+    /* =====================================================================
+       Constants
+    ===================================================================== */
+    const PARAM_DESC = {
+      k:               'Number of nearest neighbours for item–item similarity',
+      n_factors:       'Dimensionality of the latent factor space',
+      n_iterations:    'Number of ALS update iterations',
+      n_epochs:        'Number of SGD training epochs',
+      lambda_:         'L2 regularisation weight (λ)',
+      reg:             'Regularisation coefficient',
+      lr:              'SGD learning rate',
+      alpha:           'Confidence scaling factor for implicit feedback',
+      seed:            'Random seed for reproducibility',
+      pop_neg_sampling:'Sample negatives proportional to item popularity (BPR)',
+    };
+
+    const FIT_TIME = {
+      'global-mean':    '< 1 s',
+      'user-mean':      '< 1 s',
+      'item-mean':      '< 1 s',
+      'most-popular':   '< 1 s',
+      'random':         '< 1 s',
+      'user-item-bias': '~ 5 s',
+      'item-based-cf':  '~ 10 s',
+      'biased-item-cf': '~ 15 s',
+      'als':            '~ 1–2 min',
+      'biased-als':     '~ 1–2 min',
+      'implicit-als':   '~ 1–2 min',
+      'bpr':            '~ 2–3 min',
+      'adjusted-bpr':   '~ 2–3 min',
+    };
+
+    /* =====================================================================
+       State
+    ===================================================================== */
+    let recommenders = [];   // from GET /api/recommenders
+
+    /* =====================================================================
+       DOM refs
+    ===================================================================== */
+    const algoSelect   = document.getElementById('algo-select');
+    const paramsSection = document.getElementById('params-section');
+    const fitBtn       = document.getElementById('fit-btn');
+    const forceRefit   = document.getElementById('force-refit');
+    const fitStatus    = document.getElementById('fit-status');
+    const modelsList   = document.getElementById('models-list');
+    const modelsEmpty  = document.getElementById('models-empty');
+
+    /* =====================================================================
+       Load recommenders from API
+    ===================================================================== */
+    async function loadRecommenders() {
+      try {
+        const res = await fetch('/api/recommenders');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        recommenders = data.recommenders;
+
+        algoSelect.innerHTML = '<option value="" disabled selected>Select an algorithm…</option>';
+        recommenders.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.name;
+          opt.textContent = r.label;
+          algoSelect.appendChild(opt);
+        });
+      } catch (err) {
+        algoSelect.innerHTML = '<option value="" disabled selected>Could not reach API server</option>';
+        setStatus('error', 'Could not connect to the API server. Is it running?  (uv run hacrecapi)');
+      }
+    }
+
+    /* =====================================================================
+       Load + render fitted models
+    ===================================================================== */
+    async function loadModels() {
+      try {
+        const res = await fetch('/api/models');
+        if (!res.ok) return;
+        const data = await res.json();
+        renderModels(data.models);
+      } catch { /* server not ready */ }
+    }
+
+    function renderModels(models) {
+      if (models.length === 0) {
+        modelsList.style.display = 'none';
+        modelsEmpty.style.display = '';
+        return;
+      }
+      modelsEmpty.style.display = 'none';
+      modelsList.style.display = '';
+      modelsList.innerHTML = '';
+
+      models.forEach(model => {
+        const paramEntries = Object.entries(model.params);
+        const paramsHtml = paramEntries.length
+          ? paramEntries.map(([k, v]) => `${k} = ${v}`).join('<br>')
+          : '<em>no hyperparameters</em>';
+
+        const card = document.createElement('div');
+        card.className = 'model-card';
+        card.innerHTML = `
+          <div class="model-card-body">
+            <div class="model-card-name">${escHtml(model.label)}</div>
+            <div class="model-card-params">${paramsHtml}</div>
+          </div>
+          <div class="model-card-badge">Fitted</div>
+        `;
+        modelsList.appendChild(card);
+      });
+    }
+
+    /* =====================================================================
+       Algorithm selection → render param form
+    ===================================================================== */
+    algoSelect.addEventListener('change', () => {
+      const rec = recommenders.find(r => r.name === algoSelect.value);
+      if (!rec) return;
+      renderParamsForm(rec);
+      fitBtn.disabled = false;
+      setStatus('hidden');
+    });
+
+    function renderParamsForm(rec) {
+      const timeHint = FIT_TIME[rec.name]
+        ? `<span class="fit-time-hint">⏱ Estimated fit time: ${escHtml(FIT_TIME[rec.name])}</span>`
+        : '';
+
+      if (rec.params.length === 0) {
+        paramsSection.innerHTML = `
+          <p class="params-section-title">Hyperparameters</p>
+          ${timeHint}
+          <p class="no-params">This algorithm has no hyperparameters.</p>
+        `;
+        return;
+      }
+
+      let fieldsHtml = '';
+      rec.params.forEach(p => {
+        const desc = PARAM_DESC[p.name] || '';
+        const descHtml = desc ? `<p class="field-desc">${escHtml(desc)}</p>` : '';
+
+        if (p.type === 'bool') {
+          fieldsHtml += `
+            <div class="field">
+              <div class="field-checkbox">
+                <input type="checkbox" id="param-${p.name}" name="${p.name}" ${p.default ? 'checked' : ''}>
+                <label for="param-${p.name}">${escHtml(p.name)}</label>
+              </div>
+              ${descHtml}
+            </div>`;
+        } else {
+          const step  = p.step  !== undefined ? `step="${p.step}"`  : (p.type === 'float' ? 'step="any"' : 'step="1"');
+          const min   = p.min   !== undefined ? `min="${p.min}"`   : '';
+          const max   = p.max   !== undefined ? `max="${p.max}"`   : '';
+          fieldsHtml += `
+            <div class="field">
+              <label for="param-${p.name}">${escHtml(p.name)}</label>
+              <input type="number" id="param-${p.name}" name="${p.name}"
+                     value="${p.default}" ${step} ${min} ${max}>
+              ${descHtml}
+            </div>`;
+        }
+      });
+
+      paramsSection.innerHTML = `
+        <p class="params-section-title">Hyperparameters</p>
+        ${timeHint}
+        ${fieldsHtml}
+      `;
+    }
+
+    /* =====================================================================
+       Collect current param values from form
+    ===================================================================== */
+    function collectParams() {
+      const rec = recommenders.find(r => r.name === algoSelect.value);
+      if (!rec) return {};
+
+      const out = {};
+      rec.params.forEach(p => {
+        const el = document.getElementById(`param-${p.name}`);
+        if (!el) return;
+        if (p.type === 'bool')       out[p.name] = el.checked;
+        else if (p.type === 'int')   out[p.name] = parseInt(el.value, 10);
+        else                          out[p.name] = parseFloat(el.value);
+      });
+      return out;
+    }
+
+    /* =====================================================================
+       Fit button
+    ===================================================================== */
+    fitBtn.addEventListener('click', async () => {
+      const name = algoSelect.value;
+      if (!name) return;
+
+      const rec   = recommenders.find(r => r.name === name);
+      const params = collectParams();
+      const hint  = FIT_TIME[name] ? ` (est. ${FIT_TIME[name]})` : '';
+
+      fitBtn.disabled = true;
+      setStatus('fitting', `Fitting ${rec.label}${hint}…`);
+
+      try {
+        const res = await fetch('/api/fit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, params, force_refit: forceRefit.checked }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
+          setStatus('error', `Fitting failed: ${err.detail || 'Unknown error'}`);
+          return;
+        }
+
+        const model = await res.json();
+        setStatus('success', `${model.label} fitted successfully!`);
+        await loadModels();
+      } catch (err) {
+        setStatus('error', `Network error: ${err.message}`);
+      } finally {
+        fitBtn.disabled = false;
+      }
+    });
+
+    /* =====================================================================
+       Status helper
+    ===================================================================== */
+    function setStatus(type, message) {
+      if (type === 'hidden') {
+        fitStatus.className = 'fit-status hidden';
+        return;
+      }
+      fitStatus.className = `fit-status ${type}`;
+      const icon =
+        type === 'fitting' ? '<div class="spinner-sm"></div>' :
+        type === 'success' ? '<span>✓</span>' :
+                             '<span>✗</span>';
+      fitStatus.innerHTML = `${icon} ${escHtml(message)}`;
+    }
+
+    /* =====================================================================
+       Utility
+    ===================================================================== */
+    function escHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = String(str);
+      return d.innerHTML;
+    }
+
+    /* =====================================================================
+       Boot
+    ===================================================================== */
+    (async function init() {
+      await Promise.all([loadRecommenders(), loadModels()]);
+    })();
+  </script>
+
+</body>
+</html>
