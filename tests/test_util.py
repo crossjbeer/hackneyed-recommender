@@ -3,7 +3,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from hacrec.util import ensure_dir, load_mapping, save_mapping
+from hacrec.load import load_mapping, save_mapping
+from hacrec.util import ensure_dir
 
 
 def test_ensure_dir_creates_nested_directory_in_cwd(monkeypatch, tmp_path):
