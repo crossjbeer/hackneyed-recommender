@@ -183,6 +183,19 @@ class ImplicitALSFactorizer(Recommender):
         top_idx = sorted(candidate_idx, key=lambda i: scores[i], reverse=True)[:n]
         return [(i, float(scores[i])) for i in top_idx]
 
+    def __str__(self) -> str:
+        return "Implicit ALS (iALS)"
+
+    def __repr__(self) -> str:
+        return (
+            "ImplicitALSFactorizer("
+            f"n_factors={self.n_factors}, "
+            f"n_iterations={self.n_iterations}, "
+            f"lambda_={self.lambda_}, "
+            f"alpha={self.alpha}"
+            ")"
+        )
+
 
 # ------------------------------------------------------------------
 # CLI entry point

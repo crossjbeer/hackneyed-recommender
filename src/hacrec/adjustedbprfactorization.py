@@ -193,6 +193,21 @@ class AdjustedBPRFactorization(Recommender):
         top_idx = sorted(candidate_idx, key=lambda i: adjusted_scores[i], reverse=True)[:n]
         return [(i, float(adjusted_scores[i])) for i in top_idx]
 
+    def __str__(self) -> str:
+        return "Adjusted BPR (Popularity-Debiased)"
+
+    def __repr__(self) -> str:
+        return (
+            "AdjustedBPRFactorization("
+            f"n_factors={self.n_factors}, "
+            f"n_epochs={self.n_epochs}, "
+            f"lr={self.lr}, "
+            f"lambda_={self.lambda_}, "
+            f"alpha={self.alpha}, "
+            f"pop_neg_sampling={self.pop_neg_sampling}"
+            ")"
+        )
+
 
 # ------------------------------------------------------------------
 # CLI entry point

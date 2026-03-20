@@ -30,6 +30,12 @@ class GlobalMeanBaseline(Recommender):
         ]
         return scores[:n]
 
+    def __str__(self) -> str:
+        return "Global Mean Baseline"
+
+    def __repr__(self) -> str:
+        return "GlobalMeanBaseline()"
+
 
 class UserMeanBaseline(Recommender):
     """Naive baseline: predict each user's average rating."""
@@ -66,6 +72,12 @@ class UserMeanBaseline(Recommender):
         ]
         return scores[:n]
 
+    def __str__(self) -> str:
+        return "User Mean Baseline"
+
+    def __repr__(self) -> str:
+        return "UserMeanBaseline()"
+
 
 class ItemMeanBaseline(Recommender):
     """Naive baseline: predict each item's average rating."""
@@ -98,12 +110,19 @@ class ItemMeanBaseline(Recommender):
         top_idx = sorted(candidate_idx, key=lambda i: self.item_means[i], reverse=True)[:n]
         return [(i, float(self.item_means[i])) for i in top_idx]
 
+    def __str__(self) -> str:
+        return "Item Mean Baseline"
+
+    def __repr__(self) -> str:
+        return "ItemMeanBaseline()"
+
 
 class RandomRecommender(Recommender):
     """Sanity-check baseline: recommend uniformly random unrated items."""
 
     def __init__(self, seed: int | None = None):
         self.urm: sp.csr_matrix | None = None
+        self.seed = seed
         self.rng = np.random.default_rng(seed)
 
     def fit(self, urm: sp.csr_matrix) -> None:
@@ -118,6 +137,12 @@ class RandomRecommender(Recommender):
         candidates = [i for i in range(num_items) if i not in rated_items]
         chosen = self.rng.choice(candidates, size=min(n, len(candidates)), replace=False)
         return [(int(i), float(self.rng.random())) for i in chosen]
+
+    def __str__(self) -> str:
+        return "Random (Sanity Check)"
+
+    def __repr__(self) -> str:
+        return f"RandomRecommender(seed={self.seed})"
 
 
 class UserItemBiasBaseline(Recommender):
@@ -168,6 +193,14 @@ class UserItemBiasBaseline(Recommender):
         top_idx = sorted(candidate_idx, key=lambda i: scores[i], reverse=True)[:n]
         return [(i, float(scores[i])) for i in top_idx]
 
+    def __str__(self) -> str:
+        return "User-Item Bias Baseline"
+
+    def __repr__(self) -> str:
+        return (
+            f"UserItemBiasBaseline(reg={self.reg}, n_iterations={self.n_iterations})"
+        )
+
 
 class MostPopularBaseline(Recommender):
     """Naive ranking baseline: recommend most frequently rated items."""
@@ -206,3 +239,9 @@ class MostPopularBaseline(Recommender):
             reverse=True,
         )[:n]
         return [(i, float(self.item_means[i])) for i in top_idx]
+
+    def __str__(self) -> str:
+        return "Most Popular Baseline"
+
+    def __repr__(self) -> str:
+        return "MostPopularBaseline()"

@@ -206,6 +206,20 @@ class BiasedALSFactorization(Recommender):
         top_idx = sorted(candidate_idx, key=lambda i: scores[i], reverse=True)[:n]
         return [(i, float(scores[i])) for i in top_idx]
 
+    def __str__(self) -> str:
+        return "Biased ALS Matrix Factorization"
+
+    def __repr__(self) -> str:
+        return (
+            "BiasedALSFactorization("
+            f"n_factors={self.n_factors}, "
+            f"n_iterations={self.n_iterations}, "
+            f"lambda_={self.lambda_}, "
+            f"min_rating={self.min_rating}, "
+            f"max_rating={self.max_rating}"
+            ")"
+        )
+
 
 # ------------------------------------------------------------------
 # CLI entry point

@@ -211,6 +211,20 @@ class BiasedCollaborativeCF(Recommender):
             if np.isfinite(scores[i])
         ]
 
+    def __str__(self) -> str:
+        return "Biased Item-based Collaborative Filtering"
+
+    def __repr__(self) -> str:
+        return (
+            "BiasedCollaborativeCF("
+            f"k={self.k}, "
+            f"reg={self.reg}, "
+            f"n_iterations={self.n_iterations}, "
+            f"min_rating={self.min_rating}, "
+            f"max_rating={self.max_rating}"
+            ")"
+        )
+
 
 # ------------------------------------------------------------------
 # CLI entry point

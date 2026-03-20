@@ -128,6 +128,12 @@ class ItemBasedCF(Recommender):
             if np.isfinite(scores[i])
         ]
 
+    def __str__(self) -> str:
+        return "Item-based Collaborative Filtering"
+
+    def __repr__(self) -> str:
+        return f"ItemBasedCF(k={self.k})"
+
 # ------------------------------------------------------------------
 # CLI entry point
 # ------------------------------------------------------------------

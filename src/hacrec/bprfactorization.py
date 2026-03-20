@@ -123,6 +123,19 @@ class BPRFactorization(Recommender):
         top_idx = sorted(candidate_idx, key=lambda i: scores[i], reverse=True)[:n]
         return [(i, float(scores[i])) for i in top_idx]
 
+    def __str__(self) -> str:
+        return "Bayesian Personalized Ranking (BPR)"
+
+    def __repr__(self) -> str:
+        return (
+            "BPRFactorization("
+            f"n_factors={self.n_factors}, "
+            f"n_epochs={self.n_epochs}, "
+            f"lr={self.lr}, "
+            f"lambda_={self.lambda_}"
+            ")"
+        )
+
 
 # ------------------------------------------------------------------
 # CLI entry point
