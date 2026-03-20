@@ -9,22 +9,9 @@ import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
 
-from .itembasedcf import ItemBasedCF
-from .biaseditembasedcf import BiasedCollaborativeCF
-from .recommender import evaluate_predictions, evaluate_recommendations, Recommender
-from .baselines import (
-    GlobalMeanBaseline,
-    UserMeanBaseline,
-    ItemMeanBaseline,
-    UserItemBiasBaseline,
-    MostPopularBaseline,
-    RandomRecommender,
-)
 from .alsfactorization import ALSFactorization
-from .biasedalsfactorization import BiasedALSFactorization
-from .bprfactorization import BPRFactorization
-from .adjustedbprfactorization import AdjustedBPRFactorization
-from .implicitalsfactorization import ImplicitALSFactorizer
+from .recommender import evaluate_predictions, evaluate_recommendations
+from .recommender_registry import registry
 from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR
 from .util import load_mapping
 
@@ -64,62 +51,11 @@ class _Spinner:
 
 
 # ------------------------------------------------------------------
-# Strategy registry
-# ------------------------------------------------------------------
-
-STRATEGY_REGISTRY: dict[str, type[Recommender]] = {
-    "item-based-cf": ItemBasedCF,
-    "als": ALSFactorization,
-    "global-mean": GlobalMeanBaseline,
-    "user-mean": UserMeanBaseline,
-    "item-mean": ItemMeanBaseline,
-    "user-item-bias": UserItemBiasBaseline,
-    "most-popular": MostPopularBaseline,
-    "random": RandomRecommender,
-    "biased-als": BiasedALSFactorization,
-    "biased-item-cf": BiasedCollaborativeCF,
-    "bpr": BPRFactorization,
-    "adjusted-bpr": AdjustedBPRFactorization,
-    "implicit-als": ImplicitALSFactorizer,
-}
-
-DEFAULT_PARAMS: dict[str, dict] = {
-    "item-based-cf": {"k": 50},
-    "als": {"n_factors": 65, "n_iterations": 40, "lambda_": 0.1},
-    "global-mean": {},
-    "user-mean": {},
-    "item-mean": {},
-    "user-item-bias": {"reg": 10.0, "n_iterations": 10},
-    "most-popular": {},
-    "random": {"seed": 42},
-    "biased-als": {"n_factors": 20, "n_iterations": 40, "lambda_": 0.1},
-    "biased-item-cf": {"k": 50, "reg": 10.0},
-    "bpr": {"n_factors": 50, "n_epochs": 20, "lr": 0.05, "lambda_": 0.01},
-    "implicit-als": {"n_factors": 50, "n_iterations": 15, "lambda_": 0.1, "alpha": 40.0},
-    "adjusted-bpr": {"n_factors": 50, "n_epochs": 20, "lr": 0.05, "lambda_": 0.01},
-}
-
-
-def build_model(strategy: str, **overrides) -> Recommender:
-    """Instantiate a registered recommender strategy.
-
-    Any keyword arguments override the defaults for that strategy.
-    """
-    if strategy not in STRATEGY_REGISTRY:
-        raise ValueError(
-            f"Unknown strategy '{strategy}'. "
-            f"Available: {list(STRATEGY_REGISTRY.keys())}"
-        )
-    params = {**DEFAULT_PARAMS.get(strategy, {}), **overrides}
-    return STRATEGY_REGISTRY[strategy](**params)
-
-
-# ------------------------------------------------------------------
 # Sampled recommendations
 # ------------------------------------------------------------------
 
 def sample_recommendations(
-    model: Recommender,
+    model,
     urm: sp.csr_matrix,
     n_users: int = 5,
     n_recs: int = 10,
@@ -144,10 +80,13 @@ def run_evaluation(
     strategies: list[str] | None = None,
     n_sample_users: int = 5,
     n_recs: int = 10,
+    checkpoint_dir: str | path.Path | None = None,
+    force_refit: bool = False,
 ) -> dict[str, dict]:
     """Train each strategy, evaluate on val/test sets, and sample recommendations.
 
-    Returns a dict keyed by strategy name with metrics and sample recs.
+    Pass *checkpoint_dir* to cache fitted models on disk and skip re-training
+    on subsequent runs.  Set *force_refit=True* to ignore existing checkpoints.
     """
     out = path.Path(OUT_DIR)
 
@@ -163,7 +102,7 @@ def run_evaluation(
     item_mapping_reverse = {v: k for k, v in item_mapping.items()}
 
     if strategies is None:
-        strategies = list(STRATEGY_REGISTRY.keys())
+        strategies = registry.names
 
     all_results: dict[str, dict] = {}
 
@@ -176,8 +115,11 @@ def run_evaluation(
         t_start = time.perf_counter()
         spinner.start()
         try:
-            model = build_model(name)
-            model.fit(urm)
+            if checkpoint_dir is not None:
+                model = registry.build_or_load(name, urm, checkpoint_dir, force_refit=force_refit)
+            else:
+                model = registry.build(name)
+                model.fit(urm)
 
             val_metrics = evaluate_predictions(model, val_df)
             rank_metrics = evaluate_recommendations(model, val_df, k=n_recs)
