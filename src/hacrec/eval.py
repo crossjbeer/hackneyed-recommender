@@ -5,15 +5,14 @@ import sys
 import threading
 import time
 import numpy as np
-import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
 
 from .alsfactorization import ALSFactorization
+from .load import load_mapping, load_ratings_splits, load_user_item_matrix
 from .recommender import evaluate_predictions, evaluate_recommendations
 from .recommender_registry import registry
-from .transform import DATA_DIR, MOVIELENS_DIR, OUT_DIR
-from .util import load_mapping
+from .transform import OUT_DIR
 
 
 # ------------------------------------------------------------------
@@ -90,9 +89,8 @@ def run_evaluation(
     """
     out = path.Path(OUT_DIR)
 
-    urm = sp.load_npz(out / "user_item_matrix.npz")
-    val_df = pd.read_csv(out / "val_ratings.csv")
-    test_df = pd.read_csv(out / "test_ratings.csv")
+    urm = load_user_item_matrix(out)
+    _train_df, val_df, test_df = load_ratings_splits(out)
 
     user_mapping  = load_mapping(out / "user_mapping.csv")
     item_mapping  = load_mapping(out / "item_mapping.csv")
