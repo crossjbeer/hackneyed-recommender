@@ -8,25 +8,11 @@ import scipy.sparse as sp
 class Recommender(ABC):
     """Base class for recommendation models.
 
-    Subclasses must implement fit() and predict() so that
-    evaluate_predictions() can work with any model uniformly.
+    All recommenders must implement the following methods:
+        - fit(urm): Train the model on the user-item interaction matrix.
+        - recommend(user_id, n): Return the top-n recommended item indices with predicted scores for a user.
+        - predict(user_id, item_id): Predict a rating for a given user-item pair. Not necessarily supported by all recommendation models.
     """
-
-    @abstractmethod
-    def fit(self, urm: sp.csr_matrix) -> None:
-        """Train the model on the user-item interaction matrix."""
-        ...
-
-    @abstractmethod
-    def predict(self, user_id: int, item_id: int) -> float:
-        """Predict a rating for a given user-item pair."""
-        ...
-
-    @abstractmethod
-    def recommend(self, user_id: int, n: int = 10) -> list[tuple[int, float]]:
-        """Return the top-n recommended item indices with predicted scores for a user."""
-        ...
-
     @abstractmethod
     def __str__(self) -> str:
         """Return the model name."""
@@ -35,6 +21,22 @@ class Recommender(ABC):
     @abstractmethod
     def __repr__(self) -> str:
         """Return a description of the model."""
+        ...
+
+
+    @abstractmethod
+    def fit(self, urm: sp.csr_matrix) -> None:
+        """Train the model on the user-item interaction matrix."""
+        ...
+
+    @abstractmethod
+    def recommend(self, user_id: int, n: int = 10) -> list[tuple[int, float]]:
+        """Return the top-n recommended item indices with predicted scores for a user."""
+        ...
+
+    @abstractmethod
+    def predict(self, user_id: int, item_id: int) -> float:
+        """Predict a rating for a given user-item pair."""
         ...
 
 
