@@ -94,8 +94,8 @@ def run_evaluation(
     val_df = pd.read_csv(out / "val_ratings.csv")
     test_df = pd.read_csv(out / "test_ratings.csv")
 
-    user_mapping = load_mapping(out / "user_mapping.csv")
-    item_mapping = load_mapping(out / "item_mapping.csv")
+    user_mapping  = load_mapping(out / "user_mapping.csv")
+    item_mapping  = load_mapping(out / "item_mapping.csv")
     title_mapping = load_mapping(out / "movie_mapping.csv")
 
     user_mapping_reverse = {v: k for k, v in user_mapping.items()}
