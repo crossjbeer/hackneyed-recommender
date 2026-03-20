@@ -7,7 +7,8 @@ OUT_DIR = "out/"
 import pandas as pd
 import scipy.sparse as sp
 import pathlib as path
-from .util import ensure_dir, save_mapping
+from .load import save_mapping
+from .util import ensure_dir
 
 ###
 # Ratings
@@ -109,11 +110,12 @@ def main():
     urm = build_urm(train_df, shape=(num_users, num_items))
     
     sp.save_npz(out / "user_item_matrix.npz", urm)
+    train_df.to_csv(out / "train_ratings.csv", index=False)
     test_df.to_csv(out / "test_ratings.csv", index=False)
     val_df.to_csv(out / "val_ratings.csv", index=False)
     save_mapping(user_mapping, out / "user_mapping.csv")
     save_mapping(item_mapping, out / "item_mapping.csv")
-    print("Saved: user_item_matrix.npz, test_ratings.csv, val_ratings.csv, user_mapping.csv, item_mapping.csv")
+    print("Saved: user_item_matrix.npz, train_ratings.csv, test_ratings.csv, val_ratings.csv, user_mapping.csv, item_mapping.csv")
 
     movie_mapping = transform_movies(path.Path(DATA_DIR) / MOVIELENS_DIR, 'movies.csv')
     save_mapping(movie_mapping, out / "movie_mapping.csv")
