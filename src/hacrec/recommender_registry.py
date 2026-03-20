@@ -1,5 +1,7 @@
 """Central registry for recommender strategies."""
 
+import csv
+import datetime
 import pathlib
 
 import joblib
@@ -47,32 +49,55 @@ class RecommenderRegistry:
         cls, defaults = self._entries[name]
         return cls(**{**defaults, **overrides})
 
-    def checkpoint_path(
-        self,
-        name: str,
-        checkpoint_dir: str | pathlib.Path,
-        **overrides,
-    ) -> pathlib.Path:
-        """Return the checkpoint path for *name* with the given *overrides*.
+    # ------------------------------------------------------------------
+    # models.csv helpers
+    # ------------------------------------------------------------------
 
-        The filename encodes all effective parameters (registry defaults merged
-        with *overrides*) so that models trained with different hyperparameters
-        are stored in separate files and never overwrite each other.
-        """
-        if name not in self._entries:
-            raise ValueError(
-                f"Unknown strategy '{name}'. Available: {self.names}"
-            )
-        _, defaults = self._entries[name]
-        effective_params = {**defaults, **overrides}
-        if effective_params:
-            param_str = "_".join(
-                f"{k}={v}" for k, v in sorted(effective_params.items())
-            )
-            filename = f"{name}_{param_str}.pkl"
-        else:
-            filename = f"{name}.pkl"
-        return pathlib.Path(checkpoint_dir) / filename
+    def _csv_path(self, checkpoint_dir: pathlib.Path) -> pathlib.Path:
+        return checkpoint_dir / "models.csv"
+
+    def _append_csv(
+        self,
+        checkpoint_dir: pathlib.Path,
+        name: str,
+        dt: str,
+        params: dict,
+    ) -> None:
+        csv_path = self._csv_path(checkpoint_dir)
+        write_header = not csv_path.exists()
+        with open(csv_path, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["name", "datetime", "params"])
+            if write_header:
+                writer.writeheader()
+            writer.writerow({"name": name, "datetime": dt, "params": repr(params)})
+
+    def _find_in_csv(
+        self,
+        checkpoint_dir: pathlib.Path,
+        name: str,
+        params: dict,
+    ) -> pathlib.Path | None:
+        """Return the pkl path of an existing checkpoint matching name+params, or None."""
+        csv_path = self._csv_path(checkpoint_dir)
+        if not csv_path.exists():
+            return None
+        with open(csv_path, newline="") as f:
+            for row in csv.DictReader(f):
+                if row["name"] != name:
+                    continue
+                try:
+                    saved_params = eval(row["params"])  # noqa: S307
+                except Exception:
+                    continue
+                if saved_params == params:
+                    pkl = checkpoint_dir / f"{name}_{row['datetime']}" / "model.pkl"
+                    if pkl.exists():
+                        return pkl
+        return None
+
+    # ------------------------------------------------------------------
+    # Core fit / load
+    # ------------------------------------------------------------------
 
     def build_or_load(
         self,
@@ -82,25 +107,38 @@ class RecommenderRegistry:
         force_refit: bool = False,
         **overrides,
     ) -> Recommender:
-        """Return a fitted model, using a checkpoint when available.
+        """Return a fitted model, loading from an existing checkpoint when available.
 
-        If a checkpoint for *name* already exists in *checkpoint_dir* and
-        *force_refit* is False, the model is loaded directly.  Otherwise the
-        model is fitted from scratch and the checkpoint is written.
-
-        The checkpoint filename encodes all effective parameters so that models
-        with different hyperparameters are stored in separate files.
+        Each new fit is saved to ``{checkpoint_dir}/{name}_{YYMMDD_HHMMSS}/model.pkl``
+        and a row is appended to ``{checkpoint_dir}/models.csv``.  When
+        *force_refit* is False and a checkpoint with matching name + params
+        already exists in the CSV, that model is loaded instead.
         """
+        if name not in self._entries:
+            raise ValueError(
+                f"Unknown strategy '{name}'. Available: {self.names}"
+            )
+
         checkpoint_dir = pathlib.Path(checkpoint_dir)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
-        checkpoint_path = self.checkpoint_path(name, checkpoint_dir, **overrides)
 
-        if not force_refit and checkpoint_path.exists():
-            return joblib.load(checkpoint_path)
+        _, defaults = self._entries[name]
+        effective_params = {**defaults, **overrides}
+
+        if not force_refit:
+            existing = self._find_in_csv(checkpoint_dir, name, effective_params)
+            if existing:
+                return joblib.load(existing)
 
         model = self.build(name, **overrides)
         model.fit(urm)
-        joblib.dump(model, checkpoint_path)
+
+        dt = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        folder = checkpoint_dir / f"{name}_{dt}"
+        folder.mkdir(parents=True, exist_ok=True)
+        joblib.dump(model, folder / "model.pkl")
+        self._append_csv(checkpoint_dir, name, dt, effective_params)
+
         return model
 
     @property
