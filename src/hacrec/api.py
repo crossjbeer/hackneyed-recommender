@@ -18,8 +18,9 @@ from fastapi.staticfiles import StaticFiles
 
 from pydantic import BaseModel
 
+from .load import load_mapping, load_user_item_matrix
 from .recommender_registry import registry
-from .util import load_mapping, project_root
+from .util import project_root
 
 # ------------------------------------------------------------------
 # Paths
@@ -55,7 +56,7 @@ MOVIES: list[dict] = _load_movies()
 MOVIE_LOOKUP: dict[int, dict] = {m["id"]: m for m in MOVIES}
 ITEM_MAPPING: dict[int, int] = _load_item_mapping()          # originalId → col
 ITEM_MAPPING_REV: dict[int, int] = {v: k for k, v in ITEM_MAPPING.items()}  # col → originalId
-URM: sp.csr_matrix = sp.load_npz(str(OUT_DIR / "user_item_matrix.npz"))
+URM: sp.csr_matrix = load_user_item_matrix(OUT_DIR)
 
 ALGORITHM_LABELS: dict[str, str] = {
     name: str(registry.build(name))
