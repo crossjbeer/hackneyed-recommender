@@ -18,10 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from pydantic import BaseModel
 
-from .collaborativefiltering import ItemBasedCF
-from .biasedcollaborativefiltering import BiasedCollaborativeCF
-from .factorization import ALSFactorization
-from .biasedfactorization import BiasedALSFactorization
+from .recommender_registry import registry
 from .util import load_mapping, project_root
 
 # ------------------------------------------------------------------
@@ -61,10 +58,14 @@ ITEM_MAPPING_REV: dict[int, int] = {v: k for k, v in ITEM_MAPPING.items()}  # co
 URM: sp.csr_matrix = sp.load_npz(str(OUT_DIR / "user_item_matrix.npz"))
 
 ALGORITHM_LABELS = {
-    "item-cf": "Item-based Collaborative Filtering",
+    "item-based-cf": "Item-based Collaborative Filtering",
     "als": "ALS Matrix Factorization",
     "biased-als": "Biased ALS Matrix Factorization",
-    "biased-cf": "Biased Item-based Collaborative Filtering",
+    "biased-item-cf": "Biased Item-based Collaborative Filtering",
+    "implicit-als": "Implicit ALS (iALS)",
+    "bpr": "Bayesian Personalized Ranking (BPR)",
+    "adjusted-bpr": "Adjusted BPR (Popularity-Debiased)",
+    "random": "Random (Sanity Check)",
 }
 
 # ------------------------------------------------------------------
@@ -72,7 +73,7 @@ ALGORITHM_LABELS = {
 # ------------------------------------------------------------------
 
 class RecommendRequest(BaseModel):
-    algorithm: str                  # "item-cf" | "als"
+    algorithm: str                  # "item-based-cf" | "als"
     ratings: dict[str, int]         # { "<movieId>": 1-5 }
 
 
@@ -147,15 +148,7 @@ def recommend(req: RecommendRequest):
     augmented_urm = sp.vstack([URM, new_row], format="csr")
 
     # --- Fit model on the augmented URM --------------------------------
-    if req.algorithm == "item-cf":
-        model = ItemBasedCF(k=50)
-    elif req.algorithm == "biased-als":
-        model = BiasedALSFactorization(n_factors=65, n_iterations=40, lambda_=0.1)
-    elif req.algorithm == "biased-cf":
-        model = BiasedCollaborativeCF(k=50, reg=10.0)
-    else:
-        model = ALSFactorization(n_factors=65, n_iterations=40, lambda_=0.1)
-
+    model = registry.build(req.algorithm)
     model.fit(augmented_urm)
 
     # --- Get top-10 recommendations ------------------------------------
