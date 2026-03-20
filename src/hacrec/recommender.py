@@ -29,6 +29,16 @@ class Recommender(ABC):
         """Return the top-n recommended item indices with predicted scores for a user."""
         ...
 
+    @abstractmethod
+    def __str__(self) -> str:
+        """Return the model name."""
+        ...
+
+    @abstractmethod
+    def __repr__(self) -> str:
+        """Return a description of the model."""
+        ...
+
 
 # ------------------------------------------------------------------
 # Model-agnostic evaluation loop (reusable for any Recommender)
