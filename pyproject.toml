@@ -12,6 +12,7 @@ dependencies = [
 "numpy",
 "pandas",
 "scipy",
+"joblib",
 "plotly",
 "fastapi",
 "uvicorn",
