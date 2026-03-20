@@ -372,6 +372,32 @@ main {
   margin-top: 2rem;
 }
 
+/* --- Header nav ---------------------------------------------------------- */
+.header-nav {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+.header-nav a {
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.7rem;
+  transition: color var(--transition), border-color var(--transition);
+}
+.header-nav a:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+/* --- No-models notice ---------------------------------------------------- */
+.no-models-notice {
+  font-size: 0.87rem;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 0.5rem;
+}
+
 /* --- Footer -------------------------------------------------------------- */
 footer {
   text-align: center;

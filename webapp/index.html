@@ -10,6 +10,9 @@
   <header>
     <h1>Hackneyed Recommender</h1>
     <p class="subtitle">Rate some movies, get recommendations.</p>
+    <nav class="header-nav">
+      <a href="/playground.html">⚗ Model Playground</a>
+    </nav>
   </header>
 
   <main>
@@ -47,15 +50,17 @@
 
       <div class="submit-bar">
         <div class="algorithm-picker">
-          <label for="algorithm-select">Algorithm:</label>
+          <label for="algorithm-select">Model:</label>
           <select id="algorithm-select">
-            <option value="item-cf">Collaborative Filtering (Item-based)</option>
-            <option value="als">ALS Matrix Factorization</option>
+            <option value="" disabled selected>Loading fitted models…</option>
           </select>
         </div>
         <button id="submit-btn" class="btn btn-primary" disabled>
           Get Recommendations
         </button>
+      </div>
+      <div id="no-models-notice" class="no-models-notice" style="display:none">
+        No fitted models yet — <a href="/playground.html">visit the Playground</a> to fit one.
       </div>
     </section>
 

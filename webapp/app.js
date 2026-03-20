@@ -276,18 +276,59 @@ function updateRatedCount() {
 loadMoreBtn.addEventListener("click", renderNextPage);
 
 // ---------------------------------------------------------------------------
+// Fitted model loading — populates the algorithm dropdown
+// ---------------------------------------------------------------------------
+
+async function loadModels() {
+  const noModelsNotice = document.getElementById("no-models-notice");
+  try {
+    const res = await fetch("/api/models");
+    if (!res.ok) return;
+    const data = await res.json();
+    const models = data.models;
+
+    if (models.length === 0) {
+      algorithmSel.style.display = "none";
+      noModelsNotice.style.display = "";
+      submitBtn.disabled = true;
+      return;
+    }
+
+    algorithmSel.style.display = "";
+    noModelsNotice.style.display = "none";
+    algorithmSel.innerHTML = "";
+
+    models.forEach((model) => {
+      const opt = document.createElement("option");
+      opt.value = model.name;
+      opt.textContent = model.label + _formatParamsSuffix(model.params);
+      opt.dataset.params = JSON.stringify(model.params);
+      algorithmSel.appendChild(opt);
+    });
+  } catch { /* API not available */ }
+}
+
+function _formatParamsSuffix(params) {
+  const entries = Object.entries(params);
+  if (entries.length === 0) return "";
+  return " (" + entries.map(([k, v]) => `${k}=${v}`).join(", ") + ")";
+}
+
+// ---------------------------------------------------------------------------
 // Submit → get recommendations
 // ---------------------------------------------------------------------------
 submitBtn.addEventListener("click", async () => {
-  const algorithm = algorithmSel.value;
-  const algoLabel = algorithmSel.options[algorithmSel.selectedIndex].text;
+  const selectedOpt = algorithmSel.options[algorithmSel.selectedIndex];
+  const algorithm = selectedOpt.value;
+  const params = JSON.parse(selectedOpt.dataset.params || "{}");
+  const algoLabel = selectedOpt.text;
 
   // Show loading view
   loadingAlgo.textContent = algoLabel;
   showView("loading");
 
   try {
-    const recommendations = await fetchRecommendations(algorithm, state.ratings);
+    const recommendations = await fetchRecommendations(algorithm, params, state.ratings);
     renderResults(recommendations, algoLabel);
     showView("results");
   } catch (err) {
@@ -297,11 +338,11 @@ submitBtn.addEventListener("click", async () => {
   }
 });
 
-async function fetchRecommendations(algorithm, ratings) {
+async function fetchRecommendations(algorithm, params, ratings) {
   const res = await fetch("/api/recommend", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ algorithm, ratings }),
+    body: JSON.stringify({ algorithm, params, ratings }),
   });
   if (!res.ok) {
     const detail = await res.text();
@@ -357,7 +398,7 @@ backBtn.addEventListener("click", () => showView("rating"));
 // Boot
 // ---------------------------------------------------------------------------
 (async function init() {
-  await loadMovies();
+  await Promise.all([loadMovies(), loadModels()]);
   buildGenreFilters();
 
   // Initial render
