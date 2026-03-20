@@ -1,18 +1,15 @@
 """Unified evaluation endpoint for all recommender strategies."""
 
-import json
 import sys
 import threading
 import time
-import numpy as np
-import scipy.sparse as sp
 import pathlib as path
 
-from .alsfactorization import ALSFactorization
-from .load import load_mapping, load_ratings_splits, load_user_item_matrix
-from .recommender import evaluate_predictions, evaluate_recommendations
-from .recommender_registry import registry
-from .transform import OUT_DIR
+import numpy as np
+import pandas as pd
+import scipy.sparse as sp
+
+from .recommender import Recommender
 
 
 # ------------------------------------------------------------------
@@ -50,11 +47,78 @@ class _Spinner:
 
 
 # ------------------------------------------------------------------
+# Model-agnostic evaluation loop
+# ------------------------------------------------------------------
+
+def evaluate_predictions(model: Recommender, eval_df: pd.DataFrame) -> dict:
+    """Compute RMSE and MAE for every (user, item) pair in *eval_df*."""
+    predictions = []
+    actuals = []
+
+    for row in eval_df.itertuples(index=False):
+        pred = model.predict(int(row.userId), int(row.movieId))
+        predictions.append(pred)
+        actuals.append(float(row.rating))
+
+    predictions_arr = np.array(predictions)
+    actuals_arr = np.array(actuals)
+
+    rmse = float(np.sqrt(np.mean((predictions_arr - actuals_arr) ** 2)))
+    mae = float(np.mean(np.abs(predictions_arr - actuals_arr)))
+
+    return {
+        "rmse": rmse,
+        "mae": mae,
+        "num_predictions": len(predictions_arr),
+    }
+
+
+def evaluate_recommendations(
+    model: Recommender,
+    eval_df: pd.DataFrame,
+    k: int = 10,
+    relevance_threshold: float = 4.0,
+) -> dict:
+    """Compute ranking metrics against held-out data."""
+    precisions = []
+    recalls = []
+    ndcgs = []
+    hitrates = []
+
+    for uid, group in eval_df.groupby("userId"):
+        relevant = set(group.loc[group["rating"] >= relevance_threshold, "movieId"].astype(int))
+        if len(relevant) == 0:
+            continue
+
+        recs = model.recommend(int(uid), n=k)
+        rec_items = [iid for iid, _ in recs]
+
+        hits = [1.0 if iid in relevant else 0.0 for iid in rec_items]
+        precisions.append(sum(hits) / k)
+        recalls.append(sum(hits) / len(relevant))
+        hitrates.append(1.0 if sum(hits) > 0 else 0.0)
+
+        dcg = sum(hit / np.log2(idx + 2) for idx, hit in enumerate(hits))
+        ideal_hits = min(len(relevant), k)
+        idcg = sum(1.0 / np.log2(idx + 2) for idx in range(ideal_hits))
+        ndcgs.append(dcg / idcg if idcg > 0 else 0.0)
+
+    return {
+        "precision_at_k": float(np.mean(precisions)),
+        "recall_at_k": float(np.mean(recalls)),
+        "ndcg_at_k": float(np.mean(ndcgs)),
+        "hit_rate_at_k": float(np.mean(hitrates)),
+        "k": k,
+        "num_users_evaluated": len(precisions),
+    }
+
+
+# ------------------------------------------------------------------
 # Sampled recommendations
 # ------------------------------------------------------------------
 
 def sample_recommendations(
-    model,
+    model: Recommender,
     urm: sp.csr_matrix,
     n_users: int = 5,
     n_recs: int = 10,
@@ -82,15 +146,16 @@ def run_evaluation(
     checkpoint_dir: str | path.Path | None = None,
     force_refit: bool = False,
 ) -> dict[str, dict]:
-    """Train each strategy, evaluate on val/test sets, and sample recommendations.
+    """Evaluate each strategy and use persisted checkpoints when available."""
+    from .fit import default_checkpoint_dir, fit_recommender
+    from .load import load_mapping, load_ratings_splits, load_user_item_matrix
+    from .recommender_registry import registry
+    from .transform import OUT_DIR
 
-    Pass *checkpoint_dir* to cache fitted models on disk and skip re-training
-    on subsequent runs.  Set *force_refit=True* to ignore existing checkpoints.
-    """
     out = path.Path(OUT_DIR)
 
     urm = load_user_item_matrix(out)
-    _train_df, val_df, test_df = load_ratings_splits(out)
+    _train_df, val_df, _test_df = load_ratings_splits(out)
 
     user_mapping  = load_mapping(out / "user_mapping.csv")
     item_mapping  = load_mapping(out / "item_mapping.csv")
@@ -101,6 +166,8 @@ def run_evaluation(
 
     if strategies is None:
         strategies = registry.names
+
+    checkpoint_root = path.Path(checkpoint_dir) if checkpoint_dir is not None else default_checkpoint_dir()
 
     all_results: dict[str, dict] = {}
 
@@ -113,12 +180,12 @@ def run_evaluation(
         t_start = time.perf_counter()
         spinner.start()
         try:
-            if checkpoint_dir is not None:
-                model = registry.build_or_load(name, urm, checkpoint_dir, force_refit=force_refit)
-            else:
-                model = registry.build(name)
-                model.fit(urm)
-
+            model = fit_recommender(
+                name,
+                urm,
+                checkpoint_dir=checkpoint_root,
+                force_refit=force_refit,
+            )
             val_metrics = evaluate_predictions(model, val_df)
             rank_metrics = evaluate_recommendations(model, val_df, k=n_recs)
             recs = sample_recommendations(model, urm, n_users=n_sample_users, n_recs=n_recs)
@@ -130,12 +197,6 @@ def run_evaluation(
             "rank": rank_metrics,
             "sample_recs": {str(k): [(iid, sc) for iid, sc in v] for k, v in recs.items()},
         }
-
-        # Persist ALS loss history when applicable
-        if isinstance(model, ALSFactorization) and hasattr(model, "loss_history"):
-            loss_path = out / "als_loss_history.json"
-            with open(loss_path, "w") as f:
-                json.dump(model.loss_history, f)
 
     # ---- persist results as CSV for the visualisation endpoint ----
 
