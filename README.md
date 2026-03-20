@@ -12,7 +12,8 @@ Try out the recommenders yourself in our interactive playground!
 ## How it works
 - `prepare.py`   -- Extracts the MovieLens dataset
 - `transform.py` -- Transforms raw .csv datasets into pandas dataframes. Builds our User-Item Rating Matrix (URM) 
-- `eval.py`      -- Run and compare various `Recommenders` on the URM
+- `fit.py`       -- Fit and checkpoint all registry `Recommenders` with default parameters
+- `eval.py`      -- Evaluate fitted `Recommenders` and persist comparison metrics
 - `visualize.py` -- Produce an information dashboard to visualize performance
 - `api.py`       -- FastAPI to interact with our Playground Frontend
 
@@ -21,7 +22,7 @@ There are two classes of `Recommenders`, one optimizing for `Prediction`, the ot
 
 The Abstract Base Class (ABC) is represented at `recommender.py`. Specific instances are listed below: 
 
-- Prediction: 
+- Ranking / Prediction: 
   - `itembasedcf.py`                  -- Item-Based CF using Cosine Similarity 
   - `biaseditembasedcf.py`            -- Biased Item-Based CF using Baseline-Corrected Residuals 
   - `alsfactorization.py`             -- Matrix Factorization using Alternating Least Squares (ALS)
@@ -49,6 +50,9 @@ uv sync # Creates .venv automatically
 ## Usage
 
 ```bash
+# Fit and checkpoint all recommenders with registry defaults
+uv run hacrecfit
+
 # Run the evaluation script
 uv run hacreceval
 
