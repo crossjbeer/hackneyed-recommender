@@ -26,7 +26,7 @@ from pydantic import BaseModel
 
 from .load import load_mapping, load_user_item_matrix
 from .recommender_registry import registry
-from .util import project_root
+from .util import ensure_dir, project_root
 
 # ------------------------------------------------------------------
 # Paths
@@ -36,6 +36,7 @@ ROOT = project_root()
 OUT_DIR = ROOT / "out"
 DATA_DIR = ROOT / "data" / "ml-latest-small"
 WEBAPP_DIR = ROOT / "webapp"
+VIZ_DIR = ensure_dir(OUT_DIR, "viz")
 
 # Hints that enrich each hyperparameter's schema for the playground UI.
 _PARAM_HINTS: dict[str, dict] = {
@@ -405,6 +406,7 @@ def list_models():
 # Serve static assets (style.css, app.js) at the root so relative paths in
 # index.html work regardless of whether the user visits / or /index.html.
 app.mount("/webapp", StaticFiles(directory=str(WEBAPP_DIR)), name="webapp-prefix")
+app.mount("/viz", StaticFiles(directory=str(VIZ_DIR), html=True), name="viz")
 app.mount("/", StaticFiles(directory=str(WEBAPP_DIR), html=True), name="webapp")
 
 
