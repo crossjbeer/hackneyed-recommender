@@ -35,7 +35,14 @@ def extract_movielens(zip_path: Path, data_dir: Path, large: bool = False) -> Pa
 	else:
 		print(f"Dataset already extracted at {extracted_dir}; skipping extraction.")
 	return extracted_dir
+	
 
+def prepare(large: bool = False, overwrite: bool = False) -> Path:
+	root = project_root()
+	data_dir = ensure_dir(root, "data")
+	zip_path = download_movielens(data_dir, large=large, overwrite=overwrite)
+	extracted_dir = extract_movielens(zip_path, data_dir, large=large)
+	return extracted_dir
 
 def make_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(description="Download and extract the MovieLens dataset.")
@@ -55,12 +62,7 @@ def make_parser() -> argparse.ArgumentParser:
 def main() -> None:
 	args = make_parser().parse_args()
 
-	root = project_root()
-	data_dir = ensure_dir(root, "data")
-	zip_path = download_movielens(data_dir, large=args.large, overwrite=args.overwrite)
-	extracted_dir = extract_movielens(zip_path, data_dir, large=args.large)
-	print(f"MovieLens dataset is ready at {extracted_dir}")
-
+	prepare(large=args.large, overwrite=args.overwrite)
 
 if __name__ == "__main__":
 	main()
