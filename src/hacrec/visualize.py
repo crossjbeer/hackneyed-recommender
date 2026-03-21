@@ -38,7 +38,7 @@ def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path) -> None:
     )
     fig.update_layout(
         barmode="group",
-        title="RMSE & MAE by Strategy",
+        title="RMSE & MAE by Strategy (Lower is better)",
         xaxis_title="Strategy",
         yaxis_title="Error",
     )
@@ -65,7 +65,7 @@ def plot_ranking_metrics(rank_df: pd.DataFrame, viz_dir: path.Path) -> None:
     )
     fig.update_layout(
         barmode="group",
-        title=f"Ranking Metrics (top-{k}) by Strategy",
+        title=f"Ranking Metrics (top-{k}) by Strategy (Higher is better)",
         xaxis_title="Strategy",
         yaxis_title="Score",
     )
