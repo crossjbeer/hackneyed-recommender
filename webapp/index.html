@@ -378,6 +378,7 @@
     <div class="header-inner">
       <a href="/recommender.html" class="back-link">← Recommendations</a>
       <h1>Model Playground</h1>
+      <a href="/dashboard.html" class="back-link" style="margin-left:auto">📊 Evaluation Dashboard</a>
     </div>
     <p class="subtitle">Select an algorithm, tweak its hyperparameters, then fit and save it. Fitted models become available in the Recommendations view.</p>
   </header>
@@ -419,7 +420,10 @@
     <div class="panel" id="models-panel">
       <div class="models-header">
         <p class="panel-title">Fitted Models</p>
-        <a href="/recommender.html" class="btn btn-secondary btn-sm">Use in Recommendations →</a>
+        <div style="display:flex;gap:.5rem;">
+          <a href="/recommender.html" class="btn btn-secondary btn-sm">Use in Recommendations →</a>
+          <a href="/dashboard.html" class="btn btn-secondary btn-sm">📊 Evaluation Dashboard →</a>
+        </div>
       </div>
 
       <div id="models-list" class="models-list" style="display:none"></div>
