@@ -20,12 +20,8 @@ dependencies = [
 ]
 
 [project.scripts]
-hacrecfit = "hacrec.fit:main"
-hacreceval = "hacrec.eval:main"
 hacrecviz = "hacrec.visualize:main"
 hacrecapi = "hacrec.api:main"
-hacrecprepare = "hacrec.prepare:main"
-hacrectransform = "hacrec.transform:main"
 hacrecpipeline = "hacrec.pipeline:main"
 
 [tool.hatch.build.targets.wheel]
