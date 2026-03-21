@@ -14,6 +14,8 @@ Run with:
 
 import csv
 import pathlib
+import re
+import joblib
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
@@ -120,6 +122,7 @@ class RecommendRequest(BaseModel):
     algorithm: str                  # "item-based-cf" | "als"
     params: dict = {}               # hyperparameter overrides (from playground manifest)
     ratings: dict[str, int]         # { "<movieId>": 1-5 }
+    model_id: str | None = None     # folder name of a pre-fitted checkpoint (optional)
 
 
 class FitRequest(BaseModel):
@@ -141,6 +144,88 @@ class RecommendResponse(BaseModel):
     recommendations: list[RecommendedMovie]
 
 # ------------------------------------------------------------------
+# Checkpoint fold-in helper
+# ------------------------------------------------------------------
+
+def _fold_in_user(model: object, augmented_urm: sp.csr_matrix) -> None:
+    """Mutate *model* in-place so model.recommend(n_users_original) works.
+
+    The new user's ratings occupy the last row of *augmented_urm*.  Dispatches
+    on the model's internal structure so each algorithm type gets a proper
+    closed-form or approximate update:
+
+    - Item-based CF / baselines   → update urm only (similarity pre-computed).
+    - Plain ALS (has _solve)      → one closed-form user-factor step.
+    - ImplicitALS (_update_factors) → confidence-weighted ALS fold-in.
+    - BiasedALS (user_bias+item_factors) → bias + latent-factor fold-in.
+    - BPR-style (user_factors only)  → initialise with mean user factors.
+    """
+    new_row_mat = augmented_urm[-1:]          # (1, n_items) csr_matrix
+    model.urm = augmented_urm                 # type: ignore[attr-defined]
+
+    user_factors = getattr(model, "user_factors", None)
+    if user_factors is None:
+        return  # item-based CF / baselines — urm update is sufficient
+
+    rated_idx = new_row_mat.indices
+    rated_vals = new_row_mat.data
+    item_factors = getattr(model, "item_factors", None)
+
+    # --- 1. BiasedALS: compute user_bias then latent factors ----------
+    user_bias = getattr(model, "user_bias", None)
+    if user_bias is not None and item_factors is not None:
+        if len(rated_idx) > 0:
+            new_bias = float(np.mean(
+                rated_vals - model.global_mean - model.item_bias[rated_idx]  # type: ignore
+            ))
+        else:
+            new_bias = 0.0
+        model.user_bias = np.append(user_bias, new_bias)  # type: ignore
+        if len(rated_idx) > 0:
+            F = item_factors[rated_idx]
+            residuals = (
+                rated_vals
+                - model.global_mean  # type: ignore
+                - new_bias
+                - model.item_bias[rated_idx]  # type: ignore
+            )
+            n_factors = item_factors.shape[1]
+            reg = model.lambda_ * len(rated_idx) * np.eye(n_factors)  # type: ignore
+            new_uv = np.linalg.solve(F.T @ F + reg, F.T @ residuals)
+        else:
+            new_uv = np.zeros(item_factors.shape[1])
+        model.user_factors = np.vstack([user_factors, new_uv.reshape(1, -1)])  # type: ignore
+        return
+
+    # --- 2. Plain ALS: closed-form _solve ----------------------------
+    if hasattr(model, "_solve") and item_factors is not None:
+        new_factors = model._solve(new_row_mat, item_factors)  # (1, k)
+        model.user_factors = np.vstack([user_factors, new_factors])  # type: ignore
+        return
+
+    # --- 3. ImplicitALS: confidence-weighted one-step fold-in --------
+    if hasattr(model, "_update_factors") and item_factors is not None:
+        k = item_factors.shape[1]
+        VtV = item_factors.T @ item_factors
+        alpha = getattr(model, "alpha", 40.0)
+        reg = getattr(model, "lambda_", 0.1) * np.eye(k)
+        if len(rated_idx) > 0:
+            r_i = rated_vals
+            c_i = 1.0 + alpha * r_i
+            F_i = item_factors[rated_idx]
+            A = VtV + F_i.T @ ((alpha * r_i)[:, None] * F_i) + reg
+            new_uv = np.linalg.solve(A, F_i.T @ c_i)
+        else:
+            new_uv = np.zeros(k)
+        model.user_factors = np.vstack([user_factors, new_uv.reshape(1, -1)])  # type: ignore
+        return
+
+    # --- 4. BPR-style: approximate with mean user factors ------------
+    mean_uv = user_factors.mean(axis=0)
+    model.user_factors = np.vstack([user_factors, mean_uv.reshape(1, -1)])  # type: ignore
+
+
+# ------------------------------------------------------------------
 # FastAPI app
 # ------------------------------------------------------------------
 
@@ -157,14 +242,12 @@ def get_movies() -> list[dict]:
 def recommend(req: RecommendRequest):
     """Generate top-10 recommendations for a brand-new user.
 
-    1.  Map the user's ratings (keyed by original movieId) into the URM's
-        column-index space.
-    2.  Append a new row to the URM representing this user.
-    3.  Fit the chosen model on the augmented URM.
-    4.  Call model.recommend(new_user_id, n=10).
-    5.  Map internal item indices back to movie metadata and return.
+    When *model_id* is supplied the named checkpoint is loaded from disk and
+    the new user is folded in without re-training (fast).  Otherwise the model
+    is built from *algorithm* + *params* and fitted fresh on the augmented URM
+    (original behaviour, slower).
     """
-    if req.algorithm not in registry:
+    if not req.model_id and req.algorithm not in registry:
         raise HTTPException(400, f"Unknown algorithm '{req.algorithm}'. Choose from: {list(ALGORITHM_LABELS)}")
 
     # --- Translate user ratings into URM column indices ----------------
@@ -198,10 +281,26 @@ def recommend(req: RecommendRequest):
     )
     augmented_urm = sp.vstack([URM, new_row], format="csr")
 
-    # --- Fit model on the augmented URM --------------------------------
-    coerced = _coerce_params(req.algorithm, req.params)
-    model = registry.build(req.algorithm, **coerced)
-    model.fit(augmented_urm)
+    # --- Load checkpoint or fit from scratch --------------------------------
+    if req.model_id:
+        # Validate to prevent path traversal
+        if not re.fullmatch(r"[\w][\w\-]*_\d{6}_\d{6}", req.model_id):
+            raise HTTPException(400, "Invalid model_id format.")
+        from .fit import default_checkpoint_dir
+        checkpoint_dir = default_checkpoint_dir()
+        model_dir = (checkpoint_dir / req.model_id).resolve()
+        if not str(model_dir).startswith(str(checkpoint_dir.resolve())):
+            raise HTTPException(400, "Invalid model_id.")
+        model_pkl = model_dir / "model.pkl"
+        if not model_pkl.exists():
+            raise HTTPException(404, f"Checkpoint '{req.model_id}' not found. Fit the model in the Playground first.")
+        model = joblib.load(model_pkl)
+        _fold_in_user(model, augmented_urm)
+    else:
+        # Legacy path: fit from scratch on the augmented URM
+        coerced = _coerce_params(req.algorithm, req.params)
+        model = registry.build(req.algorithm, **coerced)
+        model.fit(augmented_urm)
 
     # --- Get top-10 recommendations ------------------------------------
     raw_recs = model.recommend(new_user_id, n=10)

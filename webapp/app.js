@@ -14,6 +14,7 @@ const state = {
 };
 
 const PAGE_SIZE = 40;   // Movies loaded per "page" in the grid
+let hasModels = false;  // Set to true once the models dropdown is populated
 
 // ---------------------------------------------------------------------------
 // DOM refs
@@ -267,7 +268,7 @@ movieGrid.addEventListener("mouseout", (e) => {
 function updateRatedCount() {
   const count = Object.keys(state.ratings).length;
   ratedCount.textContent = count;
-  submitBtn.disabled = count === 0;
+  submitBtn.disabled = count === 0 || !hasModels;
 }
 
 // ---------------------------------------------------------------------------
@@ -281,31 +282,64 @@ loadMoreBtn.addEventListener("click", renderNextPage);
 
 async function loadModels() {
   const noModelsNotice = document.getElementById("no-models-notice");
+  function showNoModels() {
+    algorithmSel.style.display = "none";
+    if (noModelsNotice) noModelsNotice.style.display = "";
+    submitBtn.disabled = true;
+  }
+
+  // --- Try fitted model checkpoints first ---
   try {
     const res = await fetch("/api/models");
-    if (!res.ok) return;
-    const data = await res.json();
-    const models = data.models;
-
-    if (models.length === 0) {
-      algorithmSel.style.display = "none";
-      noModelsNotice.style.display = "";
-      submitBtn.disabled = true;
-      return;
+    if (res.ok) {
+      const data = await res.json();
+      const models = data.models;
+      if (models.length > 0) {
+        algorithmSel.style.display = "";
+        if (noModelsNotice) noModelsNotice.style.display = "none";
+        algorithmSel.innerHTML = "";
+        models.forEach((model) => {
+          const opt = document.createElement("option");
+          opt.value = model.name;
+          opt.textContent = model.label + _formatParamsSuffix(model.params);
+          opt.dataset.params = JSON.stringify(model.params);
+          opt.dataset.modelId = model.folder;   // checkpoint folder for fast fold-in
+          algorithmSel.appendChild(opt);
+        });
+        hasModels = true;
+        updateRatedCount();
+        return;
+      }
     }
+  } catch { /* fall through to algorithm-type fallback */ }
+
+  // --- Fallback: no fitted models yet — show all available algorithms ---
+  // The API will fit the selected algorithm on-the-fly (original behaviour).
+  try {
+    const res = await fetch("/api/recommenders");
+    if (!res.ok) { showNoModels(); return; }
+    const data = await res.json();
+    const recommenders = data.recommenders;
+    if (recommenders.length === 0) { showNoModels(); return; }
 
     algorithmSel.style.display = "";
-    noModelsNotice.style.display = "none";
+    if (noModelsNotice) noModelsNotice.style.display = "none";
     algorithmSel.innerHTML = "";
 
-    models.forEach((model) => {
+    recommenders.forEach((rec) => {
       const opt = document.createElement("option");
-      opt.value = model.name;
-      opt.textContent = model.label + _formatParamsSuffix(model.params);
-      opt.dataset.params = JSON.stringify(model.params);
+      opt.value = rec.name;
+      const defaultParams = {};
+      rec.params.forEach((p) => { defaultParams[p.name] = p.default; });
+      opt.textContent = rec.label;
+      opt.dataset.params = JSON.stringify(defaultParams);
+      opt.dataset.modelId = "";   // no checkpoint — will fit on-the-fly
       algorithmSel.appendChild(opt);
     });
-  } catch { /* API not available */ }
+
+    hasModels = true;
+    updateRatedCount();
+  } catch { showNoModels(); }
 }
 
 function _formatParamsSuffix(params) {
@@ -321,6 +355,7 @@ submitBtn.addEventListener("click", async () => {
   const selectedOpt = algorithmSel.options[algorithmSel.selectedIndex];
   const algorithm = selectedOpt.value;
   const params = JSON.parse(selectedOpt.dataset.params || "{}");
+  const modelId = selectedOpt.dataset.modelId || "";
   const algoLabel = selectedOpt.text;
 
   // Show loading view
@@ -328,7 +363,7 @@ submitBtn.addEventListener("click", async () => {
   showView("loading");
 
   try {
-    const recommendations = await fetchRecommendations(algorithm, params, state.ratings);
+    const recommendations = await fetchRecommendations(algorithm, params, state.ratings, modelId);
     renderResults(recommendations, algoLabel);
     showView("results");
   } catch (err) {
@@ -338,11 +373,16 @@ submitBtn.addEventListener("click", async () => {
   }
 });
 
-async function fetchRecommendations(algorithm, params, ratings) {
+async function fetchRecommendations(algorithm, params, ratings, modelId = "") {
   const res = await fetch("/api/recommend", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ algorithm, params, ratings }),
+    body: JSON.stringify({
+      algorithm,
+      params,
+      ratings,
+      model_id: modelId || null,   // null triggers on-the-fly fitting
+    }),
   });
   if (!res.ok) {
     const detail = await res.text();
