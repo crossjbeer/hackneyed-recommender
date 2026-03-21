@@ -1,9 +1,8 @@
 # Hackneyed Recommender
 
-How many times have you wanted to compare the relative performance of several recommendation strategies on the MovieLens Dataset? 
-Never?  
+A Collaborative Filtering (CF) playground comparing 11 recommendation strategies on MovieLens, with a web UI for model fitting and live recommendations. 
 
-Well now you can! 
+![Metrics Dashboard](metrics.png)
 
 Fit recommenders yourself and evaluate exciting metrics like NDCG@10, RMSE, and more! 
 See how `Prediction` models compare against `Ranking` models. 
