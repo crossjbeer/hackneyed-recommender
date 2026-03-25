@@ -25,13 +25,13 @@ This table depicts all 13 Recommendation Strategies available. An indication is 
 | Matrix Factorization using Implicit ALS | - | `implicitalsfactorization.py` |
 | Matrix Factorization using Bayesian Personalized Ranking (BPR) | - | `bprfactorization.py` |
 | BPR Factorization with adjustments to reduce Popularity Bias | - | `adjustedbprfactorization.py` |
-_+ strategies support rating prediction (RMSE/MAE); − strategies are ranking-only (optimized for item ordering, not score accuracy)_
+
+*(+) strategies support rating prediction (RMSE/MAE) in some capacity; (−) strategies are ranking-only (optimized for item ordering, not score accuracy)*
 
 ## Results
-
 Evaluated on MovieLens Small with a per-user temporal train/val/test split. Relevance threshold for ranking metrics: ≥ 4.0 stars. @K = 10.
 
-### Prediction Quality (lower is better)
+### Validation Prediction Quality (lower is better)
 
 | Strategy | RMSE | MAE |
 |----------|------|-----|
@@ -45,9 +45,9 @@ Evaluated on MovieLens Small with a per-user temporal train/val/test split. Rele
 | Item-Based CF | 1.128 | 0.807 |
 | ALS | 1.883 | 1.494 |
 
-_Ranking-only strategies (ImplicitALS, BPR, AdjustedBPR) are excluded — their scores are not calibrated to the rating scale._
+*Ranking-only strategies (ImplicitALS, BPR, AdjustedBPR) are excluded — their scores are not calibrated to the rating scale.*
 
-### Ranking Quality (higher is better)
+### Validation Ranking Quality (higher is better)
 
 | Strategy | Precision@10 | Recall@10 | NDCG@10 |
 |----------|-------------|-----------|---------|
@@ -66,8 +66,8 @@ _Ranking-only strategies (ImplicitALS, BPR, AdjustedBPR) are excluded — their 
 | Random | 0.0 | 0.0 | 0.0 |
 
 **Key takeaways:**
-- Adding bias correction to Item-Based CF and ALS yields the best RMSE — explicitly modelling user/item offsets matters more than the latent factor structure alone
-- Implicit ALS leads on ranking despite having no concept of rating scale — optimizing for ordering rather than prediction is a fundamentally different (and often better) objective for recommendations
+- Adding bias correction to Item-Based CF and ALS yields the best RMSE — explicitly modelling user/item offsets matters more than the latent factor structure alone. Domain knowledge is key! 
+- Implicit ALS leads on ranking despite having no concept of rating scale — optimizing for ordering rather than prediction is a fundamentally different and better objective for recommendation. 
 - ALS has poor RMSE despite being the more complex model: without bias correction it absorbs popularity effects into the latent factors
 
 ## How it works
