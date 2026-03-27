@@ -65,10 +65,45 @@ Evaluated on MovieLens Small with a per-user temporal train/val/test split. Rele
 | Item Mean | 0.0 | 0.0 | 0.0 |
 | Random | 0.0 | 0.0 | 0.0 |
 
+### Test Prediction Quality (lower is better)
+
+| Strategy | RMSE | MAE |
+|----------|------|-----|
+| Biased Item-Based CF | **0.967** | **0.739** |
+| User-Item Bias | 0.972 | 0.753 |
+| Biased ALS | 0.976 | 0.744 |
+| User Mean | 1.028 | 0.796 |
+| Item Mean | 1.053 | 0.834 |
+| Most Popular | 1.053 | 0.834 |
+| Global Mean | 1.117 | 0.918 |
+| Item-Based CF | 1.197 | 0.845 |
+| ALS | 1.888 | 1.503 |
+
+*Ranking-only strategies (ImplicitALS, BPR, AdjustedBPR) are excluded — their scores are not calibrated to the rating scale.*
+
+### Test Ranking Quality (higher is better)
+
+| Strategy | Precision@10 | Recall@10 | NDCG@10 |
+|----------|-------------|-----------|---------|
+| Most Popular | **0.00579** | **0.0579** | **0.0276** |
+| BPR | 0.00579 | 0.0579 | 0.0265 |
+| Implicit ALS | 0.00413 | 0.0413 | 0.0191 |
+| User-Item Bias | 0.00358 | 0.0358 | 0.0182 |
+| Global Mean | 0.00220 | 0.0220 | 0.0103 |
+| User Mean | 0.00220 | 0.0220 | 0.0103 |
+| Biased Item-Based CF | 0.00220 | 0.0220 | 0.0084 |
+| Item-Based CF | 0.00165 | 0.0165 | 0.0087 |
+| ALS | 0.00193 | 0.0193 | 0.0081 |
+| Adjusted BPR | 0.00165 | 0.0165 | 0.0059 |
+| Biased ALS | 0.00028 | 0.0028 | 0.0011 |
+| Item Mean | 0.0 | 0.0 | 0.0 |
+| Random | 0.0 | 0.0 | 0.0 |
+
 **Key takeaways:**
-- Adding bias correction to Item-Based CF and ALS yields the best RMSE — explicitly modelling user/item offsets matters more than the latent factor structure alone. Domain knowledge is key! 
-- Implicit ALS leads on ranking despite having no concept of rating scale — optimizing for ordering rather than prediction is a fundamentally different and better objective for recommendation. 
+- Adding bias correction to Item-Based CF and ALS yields the best RMSE — explicitly modelling user/item offsets matters more than the latent factor structure alone. Domain knowledge is key!
+- Implicit ALS leads on ranking despite having no concept of rating scale — optimizing for ordering rather than prediction is a fundamentally different and better objective for recommendation.
 - ALS has poor RMSE despite being the more complex model: without bias correction it absorbs popularity effects into the latent factors
+- Results are consistent between validation and test sets, suggesting the rankings are stable and not overfit to the validation split
 
 ## How it works
 - `prepare.py`   -- Extracts the MovieLens dataset

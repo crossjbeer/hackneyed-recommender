@@ -75,6 +75,11 @@ def make_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Re-download the dataset even if it already exists locally (prepare step).",
     )
+    parser.add_argument(
+        "--eval-test",
+        action="store_true",
+        help="Evaluate on the test set and validation set (eval step). By default, only the validation set is evaluated.",
+    )
     return parser
 
 
@@ -104,10 +109,10 @@ def _run_fit(force_refit: bool) -> None:
     fit_recommenders(urm=urm, force_refit=force_refit)
 
 
-def _run_eval(force_refit: bool) -> None:
+def _run_eval(force_refit: bool, eval_test: bool=False) -> None:
     from .eval import _print_results, run_evaluation
 
-    results = run_evaluation(force_refit=force_refit)
+    results = run_evaluation(force_refit=force_refit, eval_test=eval_test)
     _print_results(results)
 
 
@@ -135,7 +140,7 @@ def main() -> None:
         _step("fit", _run_fit, force_refit=args.force_refit)
 
     if not args.skip_eval:
-        _step("eval", _run_eval, force_refit=args.force_refit)
+        _step("eval", _run_eval, force_refit=args.force_refit, eval_test=args.eval_test)
 
     if not args.skip_viz:
         _step("visualize", _run_viz)

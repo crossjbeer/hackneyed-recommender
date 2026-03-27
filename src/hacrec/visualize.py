@@ -1,6 +1,5 @@
 """Generate Plotly HTML visualisations from persisted evaluation results."""
 
-import json
 import pathlib as path
 
 import pandas as pd
@@ -10,18 +9,15 @@ from .transform import OUT_DIR
 from .util import ensure_dir
 
 
-def _load_json(filepath: path.Path) -> dict | list:
-    with open(filepath) as f:
-        return json.load(f)
-
-
 # ------------------------------------------------------------------
 # 1. RMSE / MAE bar chart
 # ------------------------------------------------------------------
-def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path) -> None:
+def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path, split: str = "val") -> None:
     """Grouped bar chart comparing RMSE and MAE across strategies."""
     pred_df = pred_df.sort_values("rmse")
     min_rmse = pred_df["rmse"].min()
+    split_label = "Validation" if split == "val" else "Test"
+    file_prefix = "" if split == "val" else "test_"
     fig = go.Figure(
         data=[
             go.Bar(name="RMSE", x=pred_df["strategy"], y=pred_df["rmse"]),
@@ -38,12 +34,13 @@ def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path) -> None:
     )
     fig.update_layout(
         barmode="group",
-        title="RMSE & MAE by Strategy (Lower is better)",
+        title=f"RMSE & MAE by Strategy — {split_label} (Lower is better)",
         xaxis_title="Strategy",
         yaxis_title="Error",
     )
-    fig.write_html(viz_dir / "rmse_mae_comparison.html")
-    print("  Saved rmse_mae_comparison.html")
+    out_name = f"{file_prefix}rmse_mae_comparison.html"
+    fig.write_html(viz_dir / out_name)
+    print(f"  Saved {out_name}")
 
 
 # ------------------------------------------------------------------
@@ -51,10 +48,12 @@ def plot_rmse_mae(pred_df: pd.DataFrame, viz_dir: path.Path) -> None:
 # ------------------------------------------------------------------
 
 
-def plot_ranking_metrics(rank_df: pd.DataFrame, viz_dir: path.Path) -> None:
+def plot_ranking_metrics(rank_df: pd.DataFrame, viz_dir: path.Path, split: str = "val") -> None:
     """Grouped bar chart of Precision@K, Recall@K, NDCG@K."""
     rank_df = rank_df.sort_values("recall_at_k")
     k = int(rank_df["k"].iloc[0])
+    split_label = "Validation" if split == "val" else "Test"
+    file_prefix = "" if split == "val" else "test_"
 
     fig = go.Figure(
         data=[
@@ -65,12 +64,13 @@ def plot_ranking_metrics(rank_df: pd.DataFrame, viz_dir: path.Path) -> None:
     )
     fig.update_layout(
         barmode="group",
-        title=f"Ranking Metrics (top-{k}) by Strategy (Higher is better)",
+        title=f"Ranking Metrics (top-{k}) by Strategy — {split_label} (Higher is better)",
         xaxis_title="Strategy",
         yaxis_title="Score",
     )
-    fig.write_html(viz_dir / "ranking_metrics_comparison.html")
-    print("  Saved ranking_metrics_comparison.html")
+    out_name = f"{file_prefix}ranking_metrics_comparison.html"
+    fig.write_html(viz_dir / out_name)
+    print(f"  Saved {out_name}")
 
 
 # ------------------------------------------------------------------
@@ -82,21 +82,28 @@ def main() -> None:
     out = path.Path(OUT_DIR)
     viz_dir = ensure_dir(out, "viz")
 
-    pred_path = out / "eval_prediction_metrics.csv"
-    rank_path = out / "eval_ranking_metrics.csv"
+    val_pred_path = out / "val_prediction_metrics.csv"
+    val_rank_path = out / "val_ranking_metrics.csv"
 
-    if not pred_path.exists():
-        print(f"No evaluation results found at {pred_path}.")
+    if not val_pred_path.exists():
+        print(f"No evaluation results found at {val_pred_path}.")
         print("Run `hacreceval` first to generate evaluation data.")
         return
 
-    pred_df = pd.read_csv(pred_path)
-    rank_df = pd.read_csv(rank_path)
-
     print("Generating visualisations \u2026")
 
-    plot_rmse_mae(pred_df, viz_dir)
-    plot_ranking_metrics(rank_df, viz_dir)
+    val_pred_df = pd.read_csv(val_pred_path)
+    val_rank_df = pd.read_csv(val_rank_path)
+    plot_rmse_mae(val_pred_df, viz_dir, split="val")
+    plot_ranking_metrics(val_rank_df, viz_dir, split="val")
+
+    test_pred_path = out / "test_prediction_metrics.csv"
+    test_rank_path = out / "test_ranking_metrics.csv"
+    if test_pred_path.exists():
+        test_pred_df = pd.read_csv(test_pred_path)
+        test_rank_df = pd.read_csv(test_rank_path)
+        plot_rmse_mae(test_pred_df, viz_dir, split="test")
+        plot_ranking_metrics(test_rank_df, viz_dir, split="test")
 
     print("\nDone \u2014 all plots saved to", viz_dir)
 

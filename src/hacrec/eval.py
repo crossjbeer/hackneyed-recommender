@@ -138,6 +138,64 @@ def sample_recommendations(
 # ------------------------------------------------------------------
 # Full evaluation run
 # ------------------------------------------------------------------
+def _save_pred_and_rank_csv(
+    predictions: dict[str, dict],
+    rankings: dict[str, dict],
+    out: path.Path,
+    split: str = "val",
+) -> None:
+    """Persist prediction and ranking metric CSVs for a given split."""
+    # rank_key = "rank" if split == "val" else "test_rank"
+    # file_prefix = "" if split == "val" else "test_"
+
+    pred_rows = []
+    for name, data in predictions.items():
+        pred_rows.append({
+            "strategy": name,
+            "rmse": data["rmse"],
+            "mae": data["mae"],
+            "num_predictions": data["num_predictions"],
+        })
+    pd.DataFrame(pred_rows).to_csv(out / f"{split}_prediction_metrics.csv", index=False)
+
+    rank_rows = []
+    for name, data in rankings.items():
+        rank_rows.append({
+            "strategy": name,
+            "precision_at_k": data["precision_at_k"],
+            "recall_at_k": data["recall_at_k"],
+            "ndcg_at_k": data["ndcg_at_k"],
+            "k": data["k"],
+            "num_users_evaluated": data["num_users_evaluated"],
+        })
+    pd.DataFrame(rank_rows).to_csv(out / f"{split}_ranking_metrics.csv", index=False)
+
+
+def _save_rec_csv(
+    # all_results: dict[str, dict],
+    recommendations: dict[str, dict],
+    out: path.Path,
+    item_mapping_reverse: dict,
+    user_mapping_reverse: dict,
+    title_mapping: dict,
+) -> None:
+    """Persist top-K recommendation CSV with movie titles — one row per (strategy, user, rank)."""
+    rec_rows = []
+    for name, data in recommendations.items():
+        for uid_str, items in data["sample_recs"].items():
+            for rank, (iid, score) in enumerate(items, start=1):
+                original_iid = item_mapping_reverse.get(iid, iid)
+                original_uid = user_mapping_reverse.get(int(uid_str), int(uid_str))
+                title = title_mapping.get(original_iid, f"item-{iid}")
+                rec_rows.append({
+                    "strategy": name,
+                    "user_id": original_uid,
+                    "rank": rank,
+                    "item_id": iid,
+                    "title": title,
+                    "score": float(score),
+                })
+    pd.DataFrame(rec_rows).to_csv(out / "recommendations.csv", index=False)
 
 def run_evaluation(
     strategies: list[str] | None = None,
@@ -145,6 +203,7 @@ def run_evaluation(
     n_recs: int = 10,
     checkpoint_dir: str | path.Path | None = None,
     force_refit: bool = False,
+    eval_test: bool = False, 
 ) -> dict[str, dict]:
     """Evaluate each strategy and use persisted checkpoints when available."""
     from .fit import default_checkpoint_dir, fit_recommender
@@ -155,7 +214,7 @@ def run_evaluation(
     out = path.Path(OUT_DIR)
 
     urm = load_user_item_matrix(out)
-    _train_df, val_df, _test_df = load_ratings_splits(out)
+    _train_df, val_df, test_df = load_ratings_splits(out)
 
     user_mapping  = load_mapping(out / "user_mapping.csv")
     item_mapping  = load_mapping(out / "item_mapping.csv")
@@ -186,9 +245,15 @@ def run_evaluation(
                 checkpoint_dir=checkpoint_root,
                 force_refit=force_refit,
             )
-            val_metrics = evaluate_predictions(model, val_df)
+            val_metrics  = evaluate_predictions(model, val_df)
             rank_metrics = evaluate_recommendations(model, val_df, k=n_recs)
+
+            if(eval_test):
+                test_metrics = evaluate_predictions(model, test_df)
+                test_rank_metrics = evaluate_recommendations(model, test_df, k=n_recs)
+
             recs = sample_recommendations(model, urm, n_users=n_sample_users, n_recs=n_recs)
+
         finally:
             spinner.stop(time.perf_counter() - t_start)
 
@@ -197,55 +262,36 @@ def run_evaluation(
             "rank": rank_metrics,
             "sample_recs": {str(k): [(iid, sc) for iid, sc in v] for k, v in recs.items()},
         }
+        if eval_test:
+            all_results[name]["test"] = test_metrics
+            all_results[name]["test_rank"] = test_rank_metrics
 
     # ---- persist results as CSV for the visualisation endpoint ----
+    _save_pred_and_rank_csv(
+        predictions={name: data["val"] for name, data in all_results.items()},
+        rankings={name: data["rank"] for name, data in all_results.items()},
+        out=out,
+        split="val",
+    )
 
-    # 1. Prediction metrics (RMSE / MAE) — one row per strategy
-    pred_rows = []
-    for name, data in all_results.items():
-        pred_rows.append({
-            "strategy": name,
-            "rmse": data["val"]["rmse"],
-            "mae": data["val"]["mae"],
-            "num_predictions": data["val"]["num_predictions"],
-        })
-    pred_df = pd.DataFrame(pred_rows)
-    pred_df.to_csv(out / "eval_prediction_metrics.csv", index=False)
+    if eval_test:
+        _save_pred_and_rank_csv(
+            predictions={name: data["test"] for name, data in all_results.items()},
+            rankings={name: data["test_rank"] for name, data in all_results.items()},
+            out=out,
+            split="test",
+        )
 
-    # 2. Ranking metrics — one row per strategy
-    rank_rows = []
-    for name, data in all_results.items():
-        rank_rows.append({
-            "strategy": name,
-            "precision_at_k": data["rank"]["precision_at_k"],
-            "recall_at_k": data["rank"]["recall_at_k"],
-            "ndcg_at_k": data["rank"]["ndcg_at_k"],
-            "k": data["rank"]["k"],
-            "num_users_evaluated": data["rank"]["num_users_evaluated"],
-        })
-    rank_df = pd.DataFrame(rank_rows)
-    rank_df.to_csv(out / "eval_ranking_metrics.csv", index=False)
-
-    # 3. Top-K recommendations with movie titles — one row per (strategy, user, rank)
-    rec_rows = []
-    for name, data in all_results.items():
-        for uid_str, items in data["sample_recs"].items():
-            for rank, (iid, score) in enumerate(items, start=1):
-                original_iid = item_mapping_reverse.get(iid, iid)
-                original_uid = user_mapping_reverse.get(int(uid_str), int(uid_str))
-                title = title_mapping.get(original_iid, f"item-{iid}")
-                rec_rows.append({
-                    "strategy": name,
-                    "user_id": original_uid,
-                    "rank": rank,
-                    "item_id": iid,
-                    "title": title,
-                    "score": float(score),
-                })
-    rec_df = pd.DataFrame(rec_rows)
-    rec_df.to_csv(out / "eval_recommendations.csv", index=False)
+    _save_rec_csv(
+        recommendations={name: data for name, data in all_results.items()},
+        out=out,
+        item_mapping_reverse=item_mapping_reverse,
+        user_mapping_reverse=user_mapping_reverse,
+        title_mapping=title_mapping,
+    )
 
     return all_results
+
 
 
 # ------------------------------------------------------------------
